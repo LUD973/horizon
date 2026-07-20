@@ -1,0 +1,51 @@
+/* =============================================================================
+   French Class Prestige — Jetons de design (Design System, base)
+   Direction : luxe lumineux, ivoire dominant, marine structurant, or discret.
+   ========================================================================== */
+
+:root {
+    /* Couleurs */
+    --fcp-navy: #0B1B2B;
+    --fcp-navy-2: #14283D;
+    --fcp-gold: #B89A5E;
+    --fcp-ivory: #F7F5F0;
+    --fcp-white: #FFFFFF;
+    --fcp-text: #17202A;
+    --fcp-grey: #6B7280;
+
+    /* Surfaces */
+    --fcp-bg: var(--fcp-ivory);
+    --fcp-surface: var(--fcp-white);
+
+    /* Typographie */
+    --fcp-font-body: Georgia, "Times New Roman", serif;
+    --fcp-font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --fcp-fs-hero: clamp(1.8rem, 5vw, 3rem);
+    --fcp-fs-h2: clamp(1.3rem, 3.5vw, 2rem);
+    --fcp-fs-body: 1rem;
+
+    /* Espacements */
+    --fcp-space-xs: 0.5rem;
+    --fcp-space-sm: 1rem;
+    --fcp-space-md: 1.5rem;
+    --fcp-space-lg: 2.5rem;
+    --fcp-space-xl: 4rem;
+
+    /* Rayons & transitions (animations sobres) */
+    --fcp-radius: 6px;
+    --fcp-transition: 180ms ease;
+
+    /* Cible tactile minimale */
+    --fcp-touch: 44px;
+}
+
+/* Réduction des animations si demandé par l'utilisateur (accessibilité). */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --fcp-transition: 0ms;
+    }
+    * {
+        animation: none !important;
+        scroll-behavior: auto !important;
+    }
+}
