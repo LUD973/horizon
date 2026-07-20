@@ -4,16 +4,18 @@ declare(strict_types=1);
 namespace FCP\Horizon;
 
 use FCP\Horizon\Api\RestController;
+use FCP\Horizon\PublicSite\FormRenderer;
 use FCP\Horizon\Support\Config;
 
 /**
  * Point d'entrée du plugin : câble les hooks WordPress.
  *
  * Respecte la séparation imposée :
- *   - Support/ : configuration, drapeaux, journalisation.
- *   - Data/    : accès aux données (Supabase).
- *   - Domain/  : logique métier.
- *   - Api/     : exposition REST v1 (présentation d'API).
+ *   - Support/     : configuration, drapeaux, journalisation.
+ *   - Data/        : accès aux données (Supabase).
+ *   - Domain/      : logique métier pure.
+ *   - Application/ : orchestration des cas d'usage.
+ *   - Api/         : exposition REST v1.
  *   - PublicSite/ / Admin/ : présentation.
  */
 final class Plugin
@@ -24,14 +26,47 @@ final class Plugin
     {
         $this->config = Config::fromEnvironment();
 
-        // Traductions.
         add_action('init', static function (): void {
             load_plugin_textdomain('fcp-horizon', false, dirname(plugin_basename(FCP_HORIZON_FILE)) . '/languages');
         });
 
-        // API v1 (Semaine 1 : /health ; les routes d'écriture arrivent en Semaine 2).
+        // API v1.
         $rest = new RestController($this->config);
         add_action('rest_api_init', [$rest, 'registerRoutes']);
+
+        // Présentation publique : shortcode du formulaire.
+        add_action('init', [$this, 'registerAssets']);
+        add_shortcode('fcp_enquiry_form', [$this, 'renderEnquiryForm']);
+    }
+
+    public function registerAssets(): void
+    {
+        wp_register_style(
+            'fcp-form',
+            FCP_HORIZON_URL . 'assets/css/form.css',
+            [],
+            FCP_HORIZON_VERSION
+        );
+
+        wp_register_script(
+            'fcp-form',
+            FCP_HORIZON_URL . 'assets/js/form.js',
+            [],
+            FCP_HORIZON_VERSION,
+            true
+        );
+
+        wp_localize_script('fcp-form', 'fcpEnquiry', [
+            'enquiriesUrl' => esc_url_raw(rest_url('fcp/v1/enquiries')),
+            'openedBase'   => esc_url_raw(rest_url('fcp/v1/enquiries/')),
+        ]);
+    }
+
+    public function renderEnquiryForm(): string
+    {
+        wp_enqueue_style('fcp-form');
+        wp_enqueue_script('fcp-form');
+        return (new FormRenderer())->render();
     }
 
     public function config(): Config
