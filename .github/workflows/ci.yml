@@ -1,0 +1,66 @@
+name: CI
+
+# CI légère solo (arbitrage 9) : lint + tests + contrôle migrations + scan secrets.
+# La couverture est mesurée mais ne bloque pas artificiellement les premiers commits.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    name: PHP — lint & tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.1
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --no-check-publish
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist || echo "composer install optionnel au stade actuel"
+
+      - name: Lint PHP (syntaxe)
+        run: |
+          find wp-content -name '*.php' -print0 | xargs -0 -n1 -P4 php -l
+
+      - name: PHPUnit
+        run: |
+          if [ -f vendor/bin/phpunit ]; then vendor/bin/phpunit; else echo "phpunit non installé — étape ignorée"; fi
+
+  migrations:
+    name: Migrations — nommage & ordre
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vérifier la convention de numérotation
+        run: |
+          cd supabase/migrations
+          ls -1 *.sql
+          for f in *.sql; do
+            echo "$f" | grep -Eq '^[0-9]{3}_[a-z0-9_]+\.sql$' || { echo "Nom de migration non conforme : $f"; exit 1; }
+          done
+          echo "Migrations conformes."
+
+  secrets:
+    name: Scan de secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'

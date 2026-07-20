@@ -1,0 +1,46 @@
+# --- Secrets & environnement (JAMAIS dans Git) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+auth.json
+
+# --- Dépendances ---
+/vendor/
+**/vendor/
+node_modules/
+composer.lock
+package-lock.json
+
+# --- WordPress (le cœur WP n'est pas versionné : seuls thème enfant + plugin le sont) ---
+/wp-admin/
+/wp-includes/
+/wp-*.php
+/index.php
+/xmlrpc.php
+/license.txt
+/readme.html
+wp-config.php
+wp-content/uploads/
+wp-content/upgrade/
+wp-content/cache/
+wp-content/plugins/*
+wp-content/themes/*
+!wp-content/plugins/fcp-horizon-bridge/
+!wp-content/themes/fcp-child/
+
+# --- Build / tests ---
+/build/
+/dist/
+.phpunit.result.cache
+coverage/
+clover.xml
+*.mo.bak
+
+# --- OS / IDE ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
