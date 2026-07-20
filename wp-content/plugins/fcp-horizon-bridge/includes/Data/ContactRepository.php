@@ -22,21 +22,11 @@ final class ContactRepository
     public function matchOrCreate(array $contactRow, bool $consentMarketing): string
     {
         $email = (string) $contactRow['email'];
-        $existing = $this->client->select('contacts', [
-            'email'  => 'eq.' . $email,
-            'select' => 'id',
-            'limit'  => '1',
-        ]);
 
-        if (isset($existing[0]['id'])) {
-            $id = (string) $existing[0]['id'];
-            if ($consentMarketing) {
-                $this->client->update('contacts', ['id' => 'eq.' . $id], [
-                    'consent_marketing'    => true,
-                    'consent_marketing_at' => gmdate('c'),
-                ]);
-            }
-            return $id;
+        $found = $this->findIdByEmail($email);
+        if ($found !== null) {
+            $this->applyMarketingConsent($found, $consentMarketing);
+            return $found;
         }
 
         $row = $contactRow;
@@ -45,7 +35,43 @@ final class ContactRepository
             $row['consent_marketing_at'] = gmdate('c');
         }
 
-        $created = $this->client->insert('contacts', $row);
-        return (string) $created['id'];
+        try {
+            $created = $this->client->insert('contacts', $row);
+            return (string) $created['id'];
+        } catch (SupabaseException $e) {
+            // Course concurrente : un autre appel a créé le contact entre le
+            // SELECT et l'INSERT. La contrainte UNIQUE (lower(email)) a rejeté
+            // l'insertion (HTTP 409). On relit le contact existant, sans erreur
+            // utilisateur.
+            if ($e->getCode() === 409) {
+                $again = $this->findIdByEmail($email);
+                if ($again !== null) {
+                    $this->applyMarketingConsent($again, $consentMarketing);
+                    return $again;
+                }
+            }
+            throw $e;
+        }
+    }
+
+    private function findIdByEmail(string $email): ?string
+    {
+        $rows = $this->client->select('contacts', [
+            'email'  => 'eq.' . $email,
+            'select' => 'id',
+            'limit'  => '1',
+        ]);
+        return isset($rows[0]['id']) ? (string) $rows[0]['id'] : null;
+    }
+
+    private function applyMarketingConsent(string $id, bool $consentMarketing): void
+    {
+        if (!$consentMarketing) {
+            return; // Jamais de rétrogradation silencieuse.
+        }
+        $this->client->update('contacts', ['id' => 'eq.' . $id], [
+            'consent_marketing'    => true,
+            'consent_marketing_at' => gmdate('c'),
+        ]);
     }
 }

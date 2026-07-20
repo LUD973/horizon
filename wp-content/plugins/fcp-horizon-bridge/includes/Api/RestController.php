@@ -160,30 +160,39 @@ final class RestController
             return new WP_Error('fcp_bad_nonce', 'Jeton de sécurité invalide.', ['status' => 403]);
         }
 
+        // Limitation de débit AVANT toute opération coûteuse (lecture Supabase).
+        $ip = $this->clientIp();
+        $limiter = new RateLimiter($this->config->rateLimitPerMinute());
+        if (!$limiter->allow('wa_' . $ip)) {
+            return new WP_Error('fcp_rate_limited', 'Trop de requêtes, veuillez patienter.', ['status' => 429]);
+        }
+
         try {
             $client = new SupabaseClient($this->config);
             $enquiries = new EnquiryRepository($client);
             $communications = new CommunicationRepository($client);
 
             $enquiryId = $enquiries->findIdByReference($reference);
-            if ($enquiryId === null) {
-                return new WP_Error('fcp_not_found', 'Demande introuvable.', ['status' => 404]);
+            // Réponse générique : on ne révèle jamais l'existence (ou non) d'une
+            // référence (les références sont séquentielles). Aucune donnée
+            // personnelle n'est renvoyée. On flippe uniquement la communication
+            // WhatsApp « prepared » → « opened » de CETTE demande (jamais « sent »).
+            if ($enquiryId !== null) {
+                $communications->markWhatsappOpenedForEnquiry($enquiryId);
+                (new AuditLogRepository($client))->record(
+                    'whatsapp.opened',
+                    'communications',
+                    $enquiryId,
+                    null,
+                    $ip,
+                );
             }
-
-            $communications->markWhatsappOpenedForEnquiry($enquiryId);
-            (new AuditLogRepository($client))->record(
-                'whatsapp.opened',
-                'communications',
-                $enquiryId,
-                null,
-                $this->clientIp(),
-            );
         } catch (SupabaseException $e) {
             Logger::error('Échec marquage whatsapp opened', ['code' => $e->getCode()]);
             return new WP_Error('fcp_update_failed', 'Mise à jour impossible.', ['status' => 502]);
         }
 
-        $response = new WP_REST_Response(['success' => true, 'status' => 'opened'], 200);
+        $response = new WP_REST_Response(['success' => true], 200);
         $this->applyCorsHeader($response, $request);
         return $response;
     }
