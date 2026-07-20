@@ -30,8 +30,9 @@ utilisée exclusivement côté serveur.
 | Méthode | Route | État |
 |---|---|---|
 | GET | `/wp-json/fcp/v1/health` | ✅ Semaine 1 |
-| POST | `/wp-json/fcp/v1/enquiries` | ⏳ Semaine 2 |
-| GET | `/wp-json/fcp/v1/enquiries/{ref}/receipt` | ⏳ Semaine 2-3 |
+| POST | `/wp-json/fcp/v1/enquiries` | ✅ Semaine 2 |
+| POST | `/wp-json/fcp/v1/enquiries/{ref}/whatsapp-opened` | ✅ Semaine 2 |
+| GET | `/wp-json/fcp/v1/enquiries/{ref}/receipt` | ⏳ Semaine 3 |
 
 ### Vérifier /health
 
@@ -40,6 +41,14 @@ curl -s https://<staging>/wp-json/fcp/v1/health | jq
 ```
 
 Réponse `200` si Supabase est configuré et joignable, `503` sinon.
+
+### Formulaire public
+
+Le formulaire s'intègre dans une page via le shortcode `[fcp_enquiry_form]`
+(aucune logique dans Divi). Séquence : validation serveur → enregistrement
+(contact → enquiry → details → audit_logs → communications `prepared`) →
+référence FCP (serveur) → écran de confirmation → lien wa.me. L'ouverture du
+lien marque la communication `opened`, **jamais** `sent`.
 
 ## Tests
 

@@ -1,0 +1,96 @@
+/* =============================================================================
+   Formulaire de demande FCP — mobile-first, sobre et élégant.
+   S'appuie sur les jetons de design du thème (var(--fcp-*)) avec repli.
+   ========================================================================== */
+
+.fcp-form,
+.fcp-confirmation {
+    --_navy: var(--fcp-navy, #0B1B2B);
+    --_gold: var(--fcp-gold, #B89A5E);
+    --_ivory: var(--fcp-ivory, #F7F5F0);
+    --_grey: var(--fcp-grey, #6B7280);
+    --_touch: var(--fcp-touch, 44px);
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1rem;
+    font-family: var(--fcp-font-ui, system-ui, sans-serif);
+    color: var(--fcp-text, #17202A);
+}
+
+.fcp-form__intro { color: var(--_grey); }
+
+/* Honeypot : hors écran mais présent pour les bots. */
+.fcp-hp {
+    position: absolute !important;
+    left: -9999px !important;
+    height: 1px; width: 1px; overflow: hidden;
+}
+
+.fcp-form__group { border: 1px solid rgba(11, 27, 43, 0.12); border-radius: 6px; padding: 1rem; margin: 0 0 1rem; }
+.fcp-form__group legend { font-weight: 600; color: var(--_navy); padding: 0 0.4rem; }
+
+.fcp-form__grid { display: grid; grid-template-columns: 1fr; gap: 0.85rem; }
+@media (min-width: 640px) { .fcp-form__grid { grid-template-columns: 1fr 1fr; } }
+
+.fcp-field { margin: 0 0 0.85rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.fcp-field label { font-size: 0.9rem; color: var(--_navy); }
+
+.fcp-field input,
+.fcp-field select,
+.fcp-field textarea {
+    min-height: var(--_touch);
+    padding: 0.6rem 0.7rem;
+    border: 1px solid rgba(11, 27, 43, 0.25);
+    border-radius: 6px;
+    font: inherit;
+    background: #fff;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.fcp-field input:focus-visible,
+.fcp-field select:focus-visible,
+.fcp-field textarea:focus-visible {
+    outline: 3px solid var(--_gold);
+    outline-offset: 1px;
+}
+
+.fcp-consent label { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem; color: var(--_grey); }
+.fcp-consent input { min-height: auto; width: auto; margin-top: 0.2rem; }
+
+.fcp-form__actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
+
+.fcp-cta {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: var(--_touch); padding: 0.6rem 1.4rem;
+    background: var(--_navy); color: #fff; border: 0; border-radius: 6px;
+    text-decoration: none; cursor: pointer; font: inherit;
+}
+.fcp-cta--gold { background: var(--_gold); color: var(--_navy); }
+.fcp-cta--ghost { background: transparent; color: var(--_navy); border: 1px solid rgba(11, 27, 43, 0.3); }
+.fcp-cta:focus-visible { outline: 3px solid var(--_gold); outline-offset: 2px; }
+
+.fcp-form__errors {
+    background: #fdecec; border: 1px solid #e3a1a1; border-radius: 6px;
+    padding: 0.75rem 1rem; margin: 1rem 0; color: #7a1f1f;
+}
+.fcp-form__errors ul { margin: 0; padding-left: 1.1rem; }
+
+.fcp-summary {
+    background: var(--_ivory); border: 1px solid rgba(11, 27, 43, 0.12);
+    border-radius: 6px; padding: 1rem; margin-top: 1rem;
+}
+.fcp-summary dl { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 1rem; }
+.fcp-summary dt { color: var(--_grey); font-size: 0.9rem; }
+.fcp-summary dd { margin: 0; color: var(--_navy); }
+
+.fcp-confirmation {
+    text-align: center; background: var(--_ivory);
+    border-radius: 8px; padding: 2rem 1rem; margin-top: 1rem;
+}
+.fcp-confirmation__ref { font-size: 1.1rem; }
+.fcp-confirmation__note { color: var(--_grey); margin-top: 1rem; }
+
+@media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; }
+}
