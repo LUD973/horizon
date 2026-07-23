@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace FCP\Horizon;
 
+use FCP\Horizon\Admin\BackOffice;
 use FCP\Horizon\Api\RestController;
 use FCP\Horizon\Application\IpRetention;
 use FCP\Horizon\PublicSite\FormRenderer;
@@ -42,6 +43,19 @@ final class Plugin
         // Rétention IP : purge quotidienne (12 mois glissants).
         add_action('fcp_horizon_purge_ips', [$this, 'runIpPurge']);
         add_action('init', [$this, 'scheduleIpPurge']);
+
+        // Back-office Horizon (accès protégé par capacité).
+        add_action('admin_init', [$this, 'ensureCapability']);
+        (new BackOffice($this->config))->register();
+    }
+
+    /** Accorde la capacité d'accès Horizon à l'administrateur (idempotent). */
+    public function ensureCapability(): void
+    {
+        $role = get_role('administrator');
+        if ($role && !$role->has_cap(BackOffice::CAP)) {
+            $role->add_cap(BackOffice::CAP);
+        }
     }
 
     public function scheduleIpPurge(): void

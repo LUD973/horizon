@@ -64,4 +64,60 @@ final class EnquiryRepository
         ]);
         return $rows[0] ?? null;
     }
+
+    // --- Back-office (lecture + statut contrôlé) ---
+
+    /**
+     * Liste les demandes récentes (avec contact et détails) pour la liste
+     * back-office.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listRecent(int $limit = 25, int $offset = 0): array
+    {
+        return $this->client->select('enquiries', [
+            'select' => 'id,public_reference,status,category,created_at,'
+                . 'contacts(first_name,last_name,email),'
+                . 'enquiry_details(service_date,origin,destination,passengers)',
+            'order'  => 'created_at.desc',
+            'limit'  => (string) $limit,
+            'offset' => (string) $offset,
+        ]);
+    }
+
+    /**
+     * Fiche complète d'une demande (contact + détails) pour le back-office.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function findFullByReference(string $reference): ?array
+    {
+        $rows = $this->client->select('enquiries', [
+            'public_reference' => 'eq.' . $reference,
+            'select' => 'id,public_reference,status,category,subcategory,source,'
+                . 'preferred_channel,locale,summary,created_at,updated_at,'
+                . 'contacts(type,first_name,last_name,email,phone,preferred_language,preferred_channel,consent_marketing),'
+                . 'enquiry_details(service_date,service_time,origin,destination,passengers,luggage,flight_number,train_number,notes,flexible_json)',
+            'limit'  => '1',
+        ]);
+        return $rows[0] ?? null;
+    }
+
+    /** @return array<string,int> nombre de demandes par statut */
+    public function countByStatus(): array
+    {
+        $rows = $this->client->select('enquiries', ['select' => 'status']);
+        $counts = [];
+        foreach ($rows as $row) {
+            $status = (string) ($row['status'] ?? 'new');
+            $counts[$status] = ($counts[$status] ?? 0) + 1;
+        }
+        return $counts;
+    }
+
+    /** Met à jour le statut d'une demande (écriture contrôlée back-office). */
+    public function updateStatusById(string $enquiryId, string $status): void
+    {
+        $this->client->update('enquiries', ['id' => 'eq.' . $enquiryId], ['status' => $status]);
+    }
 }

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       FCP Horizon Bridge
  * Description:        Pont entre le site public French Class Prestige (WordPress/Divi) et Horizon Core (Supabase). Logique métier, API v1, formulaire de demande, back-office. Aucune logique métier dans Divi.
- * Version:           0.2.1
+ * Version:           0.3.0
  * Requires PHP:      8.1
  * Requires at least: 6.4
  * Text Domain:       fcp-horizon
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
     exit; // Accès direct interdit.
 }
 
-define('FCP_HORIZON_VERSION', '0.2.1');
+define('FCP_HORIZON_VERSION', '0.3.0');
 define('FCP_HORIZON_FILE', __FILE__);
 define('FCP_HORIZON_DIR', plugin_dir_path(__FILE__));
 define('FCP_HORIZON_URL', plugin_dir_url(__FILE__));

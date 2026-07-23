@@ -33,4 +33,14 @@ final class AuditLogRepository
             'request_id' => $requestId,
         ]);
     }
+
+    /** @return array<int,array<string,mixed>> journal d'un enregistrement (back-office) */
+    public function listForRecord(string $recordId): array
+    {
+        return $this->client->select('audit_logs', [
+            'record_id' => 'eq.' . $recordId,
+            'select'    => 'action,new_values,created_at',
+            'order'     => 'created_at.desc',
+        ]);
+    }
 }

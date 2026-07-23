@@ -201,6 +201,19 @@ anti-doublon (1 contact / N demandes) → consentement traitement obligatoire.
 - **Rétention IP 12 mois** : migration `003` (`purge_audit_ip`) + tâche WP-cron
   quotidienne (`fcp_horizon_purge_ips`) + exécution manuelle SQL possible.
 
+### Semaine 4 — Back-office Horizon livré
+- Accès protégé par **capacité** `fcp_horizon_access` (moindre privilège,
+  accordée à l'administrateur ; rôles FCP fins = évolution).
+- **Tableau de bord** (total + répartition par statut).
+- **Liste des demandes** (référence, client, trajet, date, statut, lien fiche).
+- **Fiche** : client, mission, communications, notes internes, **journal
+  `audit_logs`**, statut.
+- **Écritures autorisées uniquement** : changement de **statut contrôlé**
+  (transitions validées par `EnquiryStatus`, journalisé) + **note interne
+  courte** (table `enquiry_notes`, migration `004`, journalisée). Nonce +
+  capacité sur chaque écriture.
+- Tests : transitions de statut (unitaire) ; 32 tests verts au total.
+
 ### Backlog acté (post-recette)
 - Suivi des numéros de vol (Horizon).
 - Adresses pré-enregistrées aéroports/gares (autocomplétion départ/destination).

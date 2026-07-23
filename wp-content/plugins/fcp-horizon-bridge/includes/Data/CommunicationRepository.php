@@ -48,4 +48,14 @@ final class CommunicationRepository
             ['status' => 'opened']
         );
     }
+
+    /** @return array<int,array<string,mixed>> communications d'une demande (back-office) */
+    public function listForEnquiry(string $enquiryId): array
+    {
+        return $this->client->select('communications', [
+            'enquiry_id' => 'eq.' . $enquiryId,
+            'select'     => 'channel,type,status,recipient,created_at',
+            'order'      => 'created_at.desc',
+        ]);
+    }
 }
