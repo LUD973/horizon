@@ -13,6 +13,18 @@
 declare(strict_types=1);
 
 spl_autoload_register(static function (string $class): void {
+    // Classes de test (doubles, helpers) : FCP\Horizon\Tests\... -> tests/...
+    $testsPrefix = 'FCP\\Horizon\\Tests\\';
+    if (strncmp($class, $testsPrefix, strlen($testsPrefix)) === 0) {
+        $relative = substr($class, strlen($testsPrefix));
+        $path = __DIR__ . '/' . str_replace('\\', '/', $relative) . '.php';
+        if (is_readable($path)) {
+            require_once $path;
+        }
+        return;
+    }
+
+    // Code du plugin : FCP\Horizon\... -> includes/...
     $prefix = 'FCP\\Horizon\\';
     if (strncmp($class, $prefix, strlen($prefix)) !== 0) {
         return;

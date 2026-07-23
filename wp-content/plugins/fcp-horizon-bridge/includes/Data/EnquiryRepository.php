@@ -11,7 +11,7 @@ namespace FCP\Horizon\Data;
  */
 final class EnquiryRepository
 {
-    public function __construct(private SupabaseClient $client)
+    public function __construct(private SupabaseGateway $client)
     {
     }
 

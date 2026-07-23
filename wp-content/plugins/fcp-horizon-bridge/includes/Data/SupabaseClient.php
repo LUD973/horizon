@@ -12,7 +12,7 @@ use FCP\Horizon\Support\Logger;
  * Accès CÔTÉ SERVEUR uniquement, via la clé service_role — jamais exposée au
  * navigateur. Les écritures métier passent par les repositories.
  */
-final class SupabaseClient
+final class SupabaseClient implements SupabaseGateway
 {
     public function __construct(private Config $config)
     {

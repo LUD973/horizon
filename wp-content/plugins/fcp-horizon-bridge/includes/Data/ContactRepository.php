@@ -8,7 +8,7 @@ namespace FCP\Horizon\Data;
  */
 final class ContactRepository
 {
-    public function __construct(private SupabaseClient $client)
+    public function __construct(private SupabaseGateway $client)
     {
     }
 

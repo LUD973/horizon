@@ -1,25 +1,28 @@
 # Tests d'intégration
 
-Les tests d'intégration du parcours **formulaire → Supabase** nécessitent un
-environnement d'exécution avec :
+## Harnais hors ligne (actif)
 
-- une instance WordPress de test (fonctions `wp_remote_*`, transients, nonces) ;
-- un projet Supabase de **test** (jamais la production, aucune donnée réelle) ;
-- les variables d'environnement Supabase renseignées.
+`EnquiryFlowTest` exerce l'**orchestration complète** (service + repositories)
+contre un **double Supabase en mémoire** (`FakeSupabase`) qui simule PostgREST :
+filtres `eq.`, unicité e-mail (→ 409) et génération de `public_reference` par le
+trigger. Aucun Supabase réel, aucune base, aucun Docker → **exécutable en CI**.
 
-Portée cible (Semaine 3, essentiels dès la Semaine 2) :
+Couverture :
+1. Soumission complète → `contacts` / `enquiries` / `enquiry_details` /
+   `communications` (`prepared`) / `audit_logs` (`enquiry.created`), référence
+   `FCP-…`, `whatsapp_url` construite ; **pas de PII** dans le journal.
+2. Rapprochement : même e-mail → **1 contact**, N demandes.
+3. **Course concurrente** : violation UNIQUE (409) interceptée → relecture du
+   contact existant, aucune erreur.
+4. `whatsapp-opened` : `prepared` → `opened` (jamais `sent`).
 
-1. `POST /fcp/v1/enquiries` avec charge valide → 201, référence `FCP-AAAA-000000`
-   retournée, lignes créées dans `contacts`, `enquiries`, `enquiry_details`,
-   `communications` (`prepared`) et `audit_logs` (`enquiry.created`).
-2. Rapprochement de contact : deux demandes avec le même e-mail → un seul
-   `contacts`, deux `enquiries`.
-3. Unicité de la référence sous soumissions successives.
-4. Échec d'enregistrement simulé → **aucune** `whatsapp_url` renvoyée.
-5. `POST /enquiries/{ref}/whatsapp-opened` → communication passe à `opened`
-   (jamais `sent`).
-6. Nonce absent/invalide → 403 ; honeypot rempli → 400 ; > 5 req/min → 429.
+```bash
+composer test    # suites « unit » + « integration »
+```
 
-Ces tests seront branchés sur `wp-phpunit` (suite « integration » de
-`phpunit.xml.dist`). La logique métier pure est déjà couverte par les tests
-unitaires (suite « unit »).
+## Bout-en-bout réel (manuel, staging)
+
+La validation contre un vrai Supabase se fait par la **recette staging**
+(`docs/STAGING_RECETTE.md`) : elle couvre en plus le nonce/cache, le rate
+limiting HTTP et le rendu du formulaire — éléments hors du périmètre d'un test
+PHP pur.

@@ -12,7 +12,7 @@ namespace FCP\Horizon\Data;
  */
 final class CommunicationRepository
 {
-    public function __construct(private SupabaseClient $client)
+    public function __construct(private SupabaseGateway $client)
     {
     }
 
