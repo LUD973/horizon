@@ -179,3 +179,33 @@ Application chauffeur, espace client complet, abonnements/Stripe, Conciergerie
 active (reste visible « Ouverture prochaine », flag `false`), agents IA,
 statistiques complexes, portail externe, automatisations avancées, multilingue
 actif EN/PT.
+
+---
+
+## Journal d'exécution
+
+### Recette Sprint 1 (staging) — VALIDÉE
+Environnement : `staging.frenchclassprestige.com` (Infomaniak, WordPress + Divi),
+séparé de la production ; base **Supabase Frankfurt** (`projet staging`).
+Chaîne complète validée de bout en bout : formulaire → validation serveur →
+référence `FCP-2026-…` (serveur) → `contacts`/`enquiries`/`enquiry_details` →
+`audit_logs` → `communications` (`prepared`→`opened`, jamais `sent`) → wa.me →
+anti-doublon (1 contact / N demandes) → consentement traitement obligatoire.
+
+### Semaine 3 — correctifs & durcissements livrés
+- **Jeton robuste** : `GET /form-token` (récupéré en REST, no-store) → règle le
+  « jeton invalide » lié au cache / à l'état connecté observé en recette.
+- **Idempotency-Key** sur `POST /enquiries` (anti-doublon sur retries réseau).
+- **`GET /enquiries/{ref}/receipt`** : reçu public, données non sensibles, rate-limité.
+- **Compat clés Supabase** : `service_role` (JWT legacy) **et** `sb_secret_…`.
+- **Rétention IP 12 mois** : migration `003` (`purge_audit_ip`) + tâche WP-cron
+  quotidienne (`fcp_horizon_purge_ips`) + exécution manuelle SQL possible.
+
+### Backlog acté (post-recette)
+- Suivi des numéros de vol (Horizon).
+- Adresses pré-enregistrées aéroports/gares (autocomplétion départ/destination).
+- **Assistant IA** : discret, ton humain, **human-in-the-loop** pour tout envoi
+  client ; transparence minimale si l'utilisateur demande sa nature (pas de
+  déni). Cadre : EU AI Act art. 50 + loyauté (pas de tromperie). Sprint dédié,
+  `ai_enabled=false` d'ici là.
+- Finalisation visuelle Home + navigation (Divi), responsive/a11y (S5–S6).

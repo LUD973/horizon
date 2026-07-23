@@ -130,6 +130,25 @@
         reviewBtn.hidden = false;
     });
 
+    // Clé d'idempotence : stable pour une même soumission logique (réutilisée
+    // si l'utilisateur réessaie après une erreur réseau) — évite les doublons.
+    var idempotencyKey = null;
+    function uuid() {
+        if (window.crypto && window.crypto.randomUUID) { return window.crypto.randomUUID(); }
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = (Math.random() * 16) | 0, v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+        });
+    }
+
+    // Récupère un jeton FRAIS via REST (robuste au cache et à l'état connecté).
+    function freshToken() {
+        return fetch(cfg.tokenUrl, { headers: { 'Accept': 'application/json' }, cache: 'no-store' })
+            .then(function (res) { return res.json(); })
+            .then(function (body) { return (body && body.token) || form.querySelector('[name="_fcp_nonce"]').value; })
+            .catch(function () { return form.querySelector('[name="_fcp_nonce"]').value; });
+    }
+
     // --- Envoi ---
     form.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -137,22 +156,29 @@
         showErrors(errs);
         if (errs.length) { summary.hidden = true; reviewBtn.hidden = false; return; }
 
-        var payload = serialize();
-        payload._fcp_nonce = form.querySelector('[name="_fcp_nonce"]').value;
-        payload.company_website = ''; // honeypot vide
-
         var submitBtn = document.getElementById('fcp-submit-btn');
         submitBtn.disabled = true;
+        if (!idempotencyKey) { idempotencyKey = uuid(); }
 
-        fetch(cfg.enquiriesUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+        freshToken().then(function (token) {
+            var payload = serialize();
+            payload._fcp_nonce = token;
+            payload.company_website = ''; // honeypot vide
+
+            return fetch(cfg.enquiriesUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Idempotency-Key': idempotencyKey
+                },
+                body: JSON.stringify(payload)
+            });
         }).then(function (res) {
             return res.json().then(function (body) { return { status: res.status, body: body }; });
         }).then(function (r) {
             submitBtn.disabled = false;
-            if (r.status === 201 && r.body.success) {
+            if ((r.status === 201 || r.status === 200) && r.body.success) {
+                idempotencyKey = null; // succès : on repart neuf pour une éventuelle autre demande
                 onSuccess(r.body);
             } else if (r.status === 422 && r.body.errors) {
                 showErrors(Object.keys(r.body.errors).map(function (k) { return r.body.errors[k]; }));
@@ -179,12 +205,15 @@
             waBtn.hidden = false;
             waBtn.addEventListener('click', function () {
                 // Trace « opened » (jamais « sent ») avant l'ouverture de WhatsApp.
+                // Jeton frais pour rester robuste au cache / à l'état connecté.
                 try {
-                    fetch(cfg.openedBase + encodeURIComponent(body.reference) + '/whatsapp-opened', {
-                        method: 'POST',
-                        keepalive: true,
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ _fcp_nonce: form.querySelector('[name="_fcp_nonce"]').value })
+                    freshToken().then(function (token) {
+                        fetch(cfg.openedBase + encodeURIComponent(body.reference) + '/whatsapp-opened', {
+                            method: 'POST',
+                            keepalive: true,
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ _fcp_nonce: token })
+                        });
                     });
                 } catch (e) {}
                 // La navigation vers wa.me suit naturellement (href).

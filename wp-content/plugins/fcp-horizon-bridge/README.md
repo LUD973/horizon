@@ -29,10 +29,17 @@ utilisée exclusivement côté serveur.
 
 | Méthode | Route | État |
 |---|---|---|
-| GET | `/wp-json/fcp/v1/health` | ✅ Semaine 1 |
-| POST | `/wp-json/fcp/v1/enquiries` | ✅ Semaine 2 |
-| POST | `/wp-json/fcp/v1/enquiries/{ref}/whatsapp-opened` | ✅ Semaine 2 |
-| GET | `/wp-json/fcp/v1/enquiries/{ref}/receipt` | ⏳ Semaine 3 |
+| GET | `/wp-json/fcp/v1/health` | ✅ S1 |
+| GET | `/wp-json/fcp/v1/form-token` | ✅ S3 (jeton frais, anti-cache) |
+| POST | `/wp-json/fcp/v1/enquiries` | ✅ S2 (Idempotency-Key: S3) |
+| GET | `/wp-json/fcp/v1/enquiries/{ref}/receipt` | ✅ S3 (données non sensibles) |
+| POST | `/wp-json/fcp/v1/enquiries/{ref}/whatsapp-opened` | ✅ S2 |
+
+**Durcissements S3** : jeton (nonce) récupéré via `/form-token` (robuste au cache
+et à l'état connecté) ; en-tête `Idempotency-Key` sur `POST /enquiries` (anti-doublon
+sur retries) ; compat clés Supabase legacy `service_role` (JWT) **et** nouvelles
+`sb_secret_…` ; purge des IP `audit_logs` à 12 mois (tâche quotidienne +
+`select public.purge_audit_ip();`).
 
 ### Vérifier /health
 
