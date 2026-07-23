@@ -12,6 +12,7 @@ use FCP\Horizon\Data\SupabaseClient;
 use FCP\Horizon\Data\SupabaseException;
 use FCP\Horizon\Domain\EnquiryValidator;
 use FCP\Horizon\Domain\PublicReference;
+use FCP\Horizon\Domain\ReceiptPresenter;
 use FCP\Horizon\Support\Config;
 use FCP\Horizon\Support\Logger;
 use FCP\Horizon\Support\RateLimiter;
@@ -22,9 +23,11 @@ use WP_REST_Response;
 /**
  * API REST versionnée « fcp/v1 ».
  *
- * Routes S2 :
+ * Routes :
  *   GET  /health
- *   POST /enquiries
+ *   GET  /form-token                              (jeton frais, robuste au cache)
+ *   POST /enquiries                               (Idempotency-Key supporté)
+ *   GET  /enquiries/{reference}/receipt           (données non sensibles)
  *   POST /enquiries/{reference}/whatsapp-opened
  */
 final class RestController
@@ -32,6 +35,7 @@ final class RestController
     private const NAMESPACE = 'fcp/v1';
     private const NONCE_ACTION = 'fcp_enquiry';
     private const HONEYPOT_FIELD = 'company_website';
+    private const IDEMPOTENCY_TTL = 600; // secondes
 
     public function __construct(private Config $config)
     {
@@ -45,9 +49,21 @@ final class RestController
             'permission_callback' => '__return_true',
         ]);
 
+        register_rest_route(self::NAMESPACE, '/form-token', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'formToken'],
+            'permission_callback' => '__return_true',
+        ]);
+
         register_rest_route(self::NAMESPACE, '/enquiries', [
             'methods'             => 'POST',
             'callback'            => [$this, 'createEnquiry'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/enquiries/(?P<reference>FCP-\d{4}-\d{6})/receipt', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'receipt'],
             'permission_callback' => '__return_true',
         ]);
 
@@ -72,6 +88,20 @@ final class RestController
             ],
         ];
         return new WP_REST_Response($data, $data['checks']['supabase_reachable'] ? 200 : 503);
+    }
+
+    /**
+     * Renvoie un jeton frais, généré dans le MÊME contexte REST que la
+     * soumission. Résout la fragilité des nonces mis en cache dans le HTML et
+     * l'incohérence entre page rendue connecté / requête traitée anonyme.
+     */
+    public function formToken(WP_REST_Request $request): WP_REST_Response
+    {
+        $response = new WP_REST_Response(['token' => wp_create_nonce(self::NONCE_ACTION)], 200);
+        // Ne jamais mettre ce jeton en cache.
+        $response->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $this->applyCorsHeader($response, $request);
+        return $response;
     }
 
     /**
@@ -116,6 +146,18 @@ final class RestController
             ], 422);
         }
 
+        // 5b. Idempotency-Key : si la même clé a déjà abouti, on renvoie la
+        // réponse précédente sans recréer de demande (retries réseau).
+        $idempotencyStore = $this->idempotencyStoreKey($request);
+        if ($idempotencyStore !== null) {
+            $cached = get_transient($idempotencyStore);
+            if (is_array($cached)) {
+                $replay = new WP_REST_Response($cached, 200);
+                $this->applyCorsHeader($replay, $request);
+                return $replay;
+            }
+        }
+
         // 6. Enregistrement (contact → enquiry → details → audit → communication).
         try {
             $service = $this->makeEnquiryService();
@@ -130,13 +172,17 @@ final class RestController
         }
 
         // 7. Succès : la demande est enregistrée, on peut fournir le lien wa.me.
-        $response = new WP_REST_Response([
+        $payload = [
             'success'      => true,
             'reference'    => $outcome['reference'],
             'summary'      => $outcome['summary'],
             'whatsapp_url' => $outcome['whatsapp_url'],
             'message'      => 'Votre demande est enregistrée. Notre Maison revient vers vous rapidement.',
-        ], 201);
+        ];
+        if ($idempotencyStore !== null) {
+            set_transient($idempotencyStore, $payload, self::IDEMPOTENCY_TTL);
+        }
+        $response = new WP_REST_Response($payload, 201);
         $this->applyCorsHeader($response, $request);
         return $response;
     }
@@ -197,7 +243,54 @@ final class RestController
         return $response;
     }
 
+    /**
+     * Reçu public d'une demande — données NON sensibles uniquement.
+     * Réponse générique (aucun oracle d'existence) + rate limiting.
+     */
+    public function receipt(WP_REST_Request $request)
+    {
+        if (($cors = $this->guardOrigin($request)) instanceof WP_Error) {
+            return $cors;
+        }
+
+        $reference = (string) $request['reference'];
+        if (!PublicReference::isValid($reference)) {
+            return new WP_Error('fcp_bad_reference', 'Référence invalide.', ['status' => 400]);
+        }
+
+        $limiter = new RateLimiter($this->config->rateLimitPerMinute());
+        if (!$limiter->allow('receipt_' . $this->clientIp())) {
+            return new WP_Error('fcp_rate_limited', 'Trop de requêtes, veuillez patienter.', ['status' => 429]);
+        }
+
+        try {
+            $repo = new EnquiryRepository(new SupabaseClient($this->config));
+            $row = $repo->findReceiptByReference($reference);
+        } catch (SupabaseException $e) {
+            Logger::error('Échec lecture reçu', ['code' => $e->getCode()]);
+            return new WP_Error('fcp_read_failed', 'Lecture impossible.', ['status' => 502]);
+        }
+
+        if ($row === null) {
+            return new WP_Error('fcp_not_found', 'Reçu introuvable.', ['status' => 404]);
+        }
+
+        $response = new WP_REST_Response(['success' => true, 'receipt' => ReceiptPresenter::present($row)], 200);
+        $this->applyCorsHeader($response, $request);
+        return $response;
+    }
+
     // --- Fabrique de dépendances (câblage couche Data ↔ Application) ---
+
+    /** Clé de stockage idempotent, ou null si aucune Idempotency-Key fournie. */
+    private function idempotencyStoreKey(WP_REST_Request $request): ?string
+    {
+        $key = $request->get_header('idempotency_key'); // « Idempotency-Key » normalisé par WP
+        if (!is_string($key) || trim($key) === '') {
+            return null;
+        }
+        return 'fcp_idem_' . md5(trim($key));
+    }
 
     private function makeEnquiryService(): EnquiryService
     {

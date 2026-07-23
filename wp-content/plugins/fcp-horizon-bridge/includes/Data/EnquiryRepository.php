@@ -48,4 +48,20 @@ final class EnquiryRepository
         ]);
         return isset($rows[0]['id']) ? (string) $rows[0]['id'] : null;
     }
+
+    /**
+     * Récupère les données NON SENSIBLES nécessaires au reçu public.
+     * Aucune donnée de contact n'est sélectionnée (minimisation).
+     *
+     * @return array<string,mixed>|null
+     */
+    public function findReceiptByReference(string $reference): ?array
+    {
+        $rows = $this->client->select('enquiries', [
+            'public_reference' => 'eq.' . $reference,
+            'select'           => 'public_reference,status,created_at,enquiry_details(service_date,origin,destination,passengers)',
+            'limit'            => '1',
+        ]);
+        return $rows[0] ?? null;
+    }
 }

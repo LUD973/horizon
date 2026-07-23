@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace FCP\Horizon;
 
 use FCP\Horizon\Api\RestController;
+use FCP\Horizon\Application\IpRetention;
 use FCP\Horizon\PublicSite\FormRenderer;
 use FCP\Horizon\Support\Config;
 
@@ -37,6 +38,22 @@ final class Plugin
         // Présentation publique : shortcode du formulaire.
         add_action('init', [$this, 'registerAssets']);
         add_shortcode('fcp_enquiry_form', [$this, 'renderEnquiryForm']);
+
+        // Rétention IP : purge quotidienne (12 mois glissants).
+        add_action('fcp_horizon_purge_ips', [$this, 'runIpPurge']);
+        add_action('init', [$this, 'scheduleIpPurge']);
+    }
+
+    public function scheduleIpPurge(): void
+    {
+        if (!wp_next_scheduled('fcp_horizon_purge_ips')) {
+            wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'fcp_horizon_purge_ips');
+        }
+    }
+
+    public function runIpPurge(): void
+    {
+        (new IpRetention($this->config))->purge();
     }
 
     public function registerAssets(): void
@@ -59,6 +76,7 @@ final class Plugin
         wp_localize_script('fcp-form', 'fcpEnquiry', [
             'enquiriesUrl' => esc_url_raw(rest_url('fcp/v1/enquiries')),
             'openedBase'   => esc_url_raw(rest_url('fcp/v1/enquiries/')),
+            'tokenUrl'     => esc_url_raw(rest_url('fcp/v1/form-token')),
         ]);
     }
 

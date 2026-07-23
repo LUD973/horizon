@@ -77,6 +77,18 @@ final class SupabaseClient
     }
 
     /**
+     * Appelle une fonction Postgres exposée (PostgREST RPC).
+     *
+     * @param array<string,mixed> $args
+     */
+    public function rpc(string $function, array $args = []): void
+    {
+        $this->request('POST', $this->restUrl('rpc/' . $function), $args, [
+            'Prefer' => 'return=minimal',
+        ]);
+    }
+
+    /**
      * @param array<string,mixed>|null $body
      * @param array<string,string>     $extraHeaders
      * @return array<int|string,mixed>|null
@@ -125,10 +137,23 @@ final class SupabaseClient
     private function headers(): array
     {
         $key = $this->config->get('SUPABASE_SERVICE_ROLE_KEY');
-        return [
-            'apikey'        => $key,
-            'Authorization' => 'Bearer ' . $key,
-            'Content-Type'  => 'application/json',
+        $headers = [
+            'apikey'       => $key,
+            'Content-Type' => 'application/json',
         ];
+        // Compatibilité clés :
+        //  - clés JWT legacy (anon/service_role, commencent par « ey… ») : PostgREST
+        //    détermine le rôle via l'en-tête Authorization Bearer <JWT>.
+        //  - nouvelles clés « sb_secret_… » : le rôle est résolu via l'en-tête apikey ;
+        //    envoyer un Bearer non-JWT casserait l'analyse côté PostgREST.
+        if ($this->looksLikeJwt($key)) {
+            $headers['Authorization'] = 'Bearer ' . $key;
+        }
+        return $headers;
+    }
+
+    private function looksLikeJwt(string $key): bool
+    {
+        return str_starts_with($key, 'ey') && substr_count($key, '.') === 2;
     }
 }
