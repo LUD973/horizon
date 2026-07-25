@@ -2,6 +2,34 @@
 
 Toutes les évolutions notables du plugin et du socle Horizon.
 
+## [0.6.0] — Semaine 5 (analytics Plausible, gated par consentement)
+### Ajouté
+- **`window.fcpAnalytics`** (`track`/`trackOnce`) : file d'attente bornée (20)
+  et dédupliquée par clé, mémoire de page uniquement (jamais persistée).
+  N'interroge jamais Didomi directement — s'appuie uniquement sur
+  `window.fcpConsent`. Utilise le shim officiel Plausible (aucun moteur de
+  chargement maison).
+- **Injection du script Plausible** strictement post-consentement, unique
+  (garde d'état `not_started/loading/loaded/failed`), sans relance automatique
+  après échec réseau/bloqueur.
+- **`consent.js`** (additif) : `hasConsent('analytics')` exige désormais
+  purpose **et** vendor Plausible quand `DIDOMI_VENDOR_PLAUSIBLE` est
+  configuré ; comportement inchangé si vide.
+- **Instrumentation formulaire** : `enquiry_form_viewed/_started/_submitted/
+  _success/_error`, mutuellement exclusifs et scopés par tentative
+  (`attemptId`) — un nouvel essai après échec redéclenche `submitted`.
+- **Clics de contact** génériques (`tel:`, `mailto:`, `wa.me`) : `phone_clicked`,
+  `email_clicked`, `whatsapp_clicked`, sans aucune donnée transmise.
+- `Config` : `PLAUSIBLE_SCRIPT_URL`, domaine/URL validés et neutralisés si
+  invalides (jamais transmis tels quels au navigateur).
+- `docs/ANALYTICS_PLAUSIBLE.md` : configuration, événements, procédure de
+  recette, limite connue sur le retrait de consentement.
+### Garantie
+- Sans `PLAUSIBLE_DOMAIN` ou sans consentement analytics : **aucune requête**
+  vers Plausible. Une panne Plausible ne produit **aucune erreur bloquante**
+  et n'affecte jamais la création d'une demande Horizon.
+- 54 tests / 148 assertions — 0 régression sur les 48 tests précédents.
+
 ## [0.5.0] — Semaine 5 (consentement Didomi)
 ### Ajouté
 - **Consentement (Didomi)** : injection du snippet officiel (jamais reconstruit)
