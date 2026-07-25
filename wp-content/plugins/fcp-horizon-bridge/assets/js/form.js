@@ -39,6 +39,30 @@
     var confirmation = document.getElementById('fcp-confirmation');
     var reviewBtn = document.getElementById('fcp-review-btn');
     var editBtn = document.getElementById('fcp-edit-btn');
+    var submitBtn = document.getElementById('fcp-submit-btn');
+
+    // --- Réduction des mouvements (C4) : scroll instantané si demandé par
+    // l'OS/le navigateur, avec repli sûr si matchMedia est indisponible. ---
+    function prefersReducedMotion() {
+        try {
+            return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        } catch (e) {
+            return false; // repli : comportement fluide par défaut
+        }
+    }
+    function revealScrollInto(el) {
+        el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    }
+
+    // --- État d'envoi (C3) : texte temporaire + aria-busy, restauré en cas
+    // d'échec uniquement (le formulaire est masqué après un succès réel). ---
+    var submitBtnDefaultText = null;
+    function setSending(isSending) {
+        if (submitBtnDefaultText === null) { submitBtnDefaultText = submitBtn.textContent; }
+        submitBtn.disabled = isSending;
+        form.setAttribute('aria-busy', isSending ? 'true' : 'false');
+        submitBtn.textContent = isSending ? 'Envoi en cours…' : submitBtnDefaultText;
+    }
 
     var LABELS = {
         first_name: 'Prénom', last_name: 'Nom', email: 'E-mail', phone: 'Téléphone',
@@ -150,7 +174,7 @@
         });
         summary.hidden = false;
         reviewBtn.hidden = true;
-        summary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        revealScrollInto(summary);
     });
 
     editBtn.addEventListener('click', function () {
@@ -184,8 +208,7 @@
         showErrors(errs);
         if (errs.length) { summary.hidden = true; reviewBtn.hidden = false; return; }
 
-        var submitBtn = document.getElementById('fcp-submit-btn');
-        submitBtn.disabled = true;
+        setSending(true);
         if (!idempotencyKey) { idempotencyKey = uuid(); }
 
         // Nouvelle tentative réelle : identifiant dédié (permet un nouveau
@@ -213,8 +236,9 @@
         }).then(function (res) {
             return res.json().then(function (body) { return { status: res.status, body: body }; });
         }).then(function (r) {
-            submitBtn.disabled = false;
             if ((r.status === 201 || r.status === 200) && r.body.success) {
+                // Succès réel : le formulaire est masqué juste après (onSuccess) —
+                // aucune restauration inutile de l'état d'envoi sur un bouton caché.
                 idempotencyKey = null; // succès : on repart neuf pour une éventuelle autre demande
                 fcpTrack('enquiry_form_success:' + currentAttempt, 'enquiry_form_success', {
                     service_category: 'mobility',
@@ -222,16 +246,18 @@
                 });
                 onSuccess(r.body);
             } else if (r.status === 422 && r.body.errors) {
+                setSending(false);
                 fcpTrack('enquiry_form_error:' + currentAttempt, 'enquiry_form_error');
                 showErrors(Object.keys(r.body.errors).map(function (k) { return r.body.errors[k]; }));
                 summary.hidden = true; reviewBtn.hidden = false;
             } else {
+                setSending(false);
                 fcpTrack('enquiry_form_error:' + currentAttempt, 'enquiry_form_error');
                 showErrors([r.body.message || 'Une erreur est survenue. Merci de réessayer.']);
                 summary.hidden = true; reviewBtn.hidden = false;
             }
         }).catch(function () {
-            submitBtn.disabled = false;
+            setSending(false);
             fcpTrack('enquiry_form_error:' + currentAttempt, 'enquiry_form_error');
             showErrors(['Connexion impossible. Merci de réessayer.']);
         });
@@ -266,6 +292,10 @@
             waBtn.hidden = true;
         }
         confirmation.hidden = false;
-        confirmation.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        revealScrollInto(confirmation);
+        // Focus programmatique (C2) : preventScroll évite un second saut de
+        // défilement redondant avec revealScrollInto ci-dessus (pas de double
+        // déplacement). Annonce correcte via aria-live="polite" déjà en place.
+        confirmation.focus({ preventScroll: true });
     }
 })();

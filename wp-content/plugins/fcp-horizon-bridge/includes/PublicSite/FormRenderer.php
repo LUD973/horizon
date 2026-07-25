@@ -125,7 +125,8 @@ final class FormRenderer
                 </label>
             </p>
 
-            <div class="fcp-form__errors" id="fcp-form-errors" role="alert" aria-live="assertive" hidden></div>
+            <div class="fcp-form__errors" id="fcp-form-errors" role="alert" aria-live="assertive"
+                 tabindex="-1" hidden></div>
 
             <div class="fcp-form__actions">
                 <button type="button" class="fcp-cta" id="fcp-review-btn"><?php esc_html_e('Vérifier ma demande', 'fcp-horizon'); ?></button>
@@ -143,7 +144,7 @@ final class FormRenderer
         </form>
 
         <!-- Écran de confirmation -->
-        <section class="fcp-confirmation" id="fcp-confirmation" hidden aria-live="polite">
+        <section class="fcp-confirmation" id="fcp-confirmation" tabindex="-1" hidden aria-live="polite">
             <h2><?php esc_html_e('Votre demande est enregistrée', 'fcp-horizon'); ?></h2>
             <p class="fcp-confirmation__ref"><?php esc_html_e('Référence', 'fcp-horizon'); ?> : <strong id="fcp-ref"></strong></p>
             <p id="fcp-confirmation-msg"></p>

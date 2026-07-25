@@ -70,11 +70,25 @@
 .fcp-cta--ghost { background: transparent; color: var(--_navy); border: 1px solid rgba(11, 27, 43, 0.3); }
 .fcp-cta:focus-visible { outline: 3px solid var(--_gold); outline-offset: 2px; }
 
+/* État d'envoi (C3) : désactivation perceptible, pas seulement au curseur. */
+.fcp-cta:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .fcp-form__errors {
     background: #fdecec; border: 1px solid #e3a1a1; border-radius: 6px;
     padding: 0.75rem 1rem; margin: 1rem 0; color: #7a1f1f;
 }
 .fcp-form__errors ul { margin: 0; padding-left: 1.1rem; }
+
+/* Focus programmatique (C1/C2) : même repère visuel que le reste du
+   formulaire, sur des conteneurs non nativement stylés au focus. */
+#fcp-form-errors:focus-visible,
+.fcp-confirmation:focus-visible {
+    outline: 3px solid var(--_gold);
+    outline-offset: 2px;
+}
 
 .fcp-summary {
     background: var(--_ivory); border: 1px solid rgba(11, 27, 43, 0.12);

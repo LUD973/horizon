@@ -35,3 +35,16 @@ spl_autoload_register(static function (string $class): void {
         require_once $path;
     }
 });
+
+// Stubs minimaux WordPress (TEST UNIQUEMENT) : couvrent les seules fonctions
+// appelées par les classes de présentation testées en rendu (ex. FormRenderer).
+// N'ont aucun effet en environnement WordPress réel (function_exists garde).
+if (!function_exists('wp_create_nonce')) {
+    function wp_create_nonce($action = -1) { return 'test-nonce'; }
+}
+if (!function_exists('esc_attr')) {
+    function esc_attr($text) { return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8'); }
+}
+if (!function_exists('esc_html_e')) {
+    function esc_html_e($text, $domain = 'default') { echo htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8'); }
+}
