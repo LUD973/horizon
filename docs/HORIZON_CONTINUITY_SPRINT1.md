@@ -5,8 +5,8 @@
 
 ## Repère Git
 - **Branche active** : `claude/fcp-execution-phase-bwtydk`
-- **Dernier commit (avant ce document)** : `5fd59dc` — docs(analytics) v0.6.0
-- **Version plugin** : **v0.6.0** (Plausible)
+- **Dernier commit (avant ce document)** : `3961575` — docs(a11y) v0.7.0
+- **Version plugin** : **v0.7.0** (UX/accessibilité formulaire)
 - **État Git** : propre après ce commit de documentation, poussé sur
   `origin/claude/fcp-execution-phase-bwtydk`
 - **Mono-dépôt** : `wp-content/themes/fcp-child`, `wp-content/plugins/fcp-horizon-bridge`,
@@ -102,10 +102,35 @@
   si malformés (jamais transmis tels quels au navigateur).
 - Doc : `docs/ANALYTICS_PLAUSIBLE.md`.
 
+## Lot livré — UX / Accessibilité du formulaire (Semaine 5, fin)
+- **Périmètre réel** : uniquement `fcp-horizon-bridge` (formulaire `/demande/` +
+  confirmation) — seul élément dynamique réellement servi hors Divi.
+- **C1** : `tabindex="-1"` sur `#fcp-form-errors` (`FormRenderer.php`) — le
+  `.focus()` déjà présent dans `form.js` devient réellement effectif.
+- **C2** : `tabindex="-1"` sur `#fcp-confirmation` + `focus({preventScroll:true})`
+  après succès réel (pas de double déplacement de défilement).
+- **C3** : `setSending()` — texte « Envoi en cours… », `aria-busy`, bouton
+  visuellement désactivé ; restauré uniquement en cas d'échec (jamais sur
+  succès, le formulaire étant masqué). Logique métier de soumission inchangée.
+- **C4** : `revealScrollInto()` — scroll instantané si
+  `prefers-reduced-motion: reduce`, repli sûr si `matchMedia` indisponible.
+- **`FormRendererMarkupTest`** vérifie les deux `tabindex="-1"` par rendu réel
+  (stubs WP de test ajoutés dans `tests/bootstrap.php`, sans effet en
+  environnement réel).
+- **Constat documenté (aucune action)** : `template-parts/{header,hero,
+  intent-selector,footer}.php` et `nav.js` sont **inertes** (jamais inclus par
+  le thème) — la Home réelle est construite dans Divi. Décision de câblage/
+  archivage/suppression **reportée après la Release Candidate**.
+- **C5 (contraste), C6 (zones tactiles), C7 (zoom 200 %)** : **non codés par
+  anticipation**. Protocole de mesure détaillé dans `docs/RECETTE_UX_S5.md`
+  (tableaux à compléter en staging) ; correction uniquement si écart mesuré
+  (< 4,5:1 texte courant / < 3:1 grand texte pour C5).
+
 ## Tests
-- **54 tests / 148 assertions** (unitaires + intégration hors ligne, double
-  Supabase + double provider + Didomi + Plausible). **0 régression** sur les
-  48 précédents ni sur Communication/Brevo. Exécution : `vendor/bin/phpunit`.
+- **56 tests / 153 assertions** (unitaires + intégration hors ligne, double
+  Supabase + double provider + Didomi + Plausible + rendu FormRenderer).
+  **0 régression** sur les 54 précédents ni sur Communication/Brevo/Didomi/
+  Plausible. Exécution : `vendor/bin/phpunit`.
 
 ## Documentation déjà créée
 - `16_IMPLEMENTATION_PLAN_SOLO.md`, `README.md`, `CHANGELOG.md`
@@ -114,6 +139,7 @@
 - `docs/COMMUNICATION_LAYER.md`, `docs/RECETTE_COMMUNICATION_S5.md`
 - `docs/CONSENT_DIDOMI.md`
 - `docs/ANALYTICS_PLAUSIBLE.md`
+- `docs/UX_ACCESSIBILITY_S5.md`, `docs/RECETTE_UX_S5.md`
 - plugin `README.md`, `tests/Integration/README.md`
 
 ## Variables d'environnement (noms uniquement)
@@ -133,17 +159,31 @@ Tous en configuration serveur — **jamais dans Git, les logs ou le navigateur**
 - Le lien **`wa.me` reste sur le numéro public `+33656898611`** (E.164
   `+33656898611`), inchangé ; aucune migration du compte WhatsApp.
 - Déploiement staging = action manuelle (upload ZIP + exécuter migrations SQL).
+- **C5/C6/C7 (contraste, zones tactiles, zoom)** : mesures à réaliser en
+  staging avant de clore le lot UX (`docs/RECETTE_UX_S5.md`).
+- **Template-parts inertes** : décision de câblage/archivage/suppression non
+  prise — à traiter après la RC, pas avant.
+
+## Contrôles nécessitant encore une action manuelle dans Divi
+- Cohérence visuelle de la Home réelle (titres, alt text, contraste des blocs).
+- Comportement clavier/mobile du menu de navigation Divi natif.
+- Ajout éventuel de liens `tel:`/`mailto:` visibles (détectés automatiquement
+  par `analytics.js` dès qu'ils existeront, sans code supplémentaire).
+- Apparence du bandeau Didomi (boutons équilibrés, sans dark pattern).
+- Mesures C5/C6/C7 elles-mêmes (outil de contraste, DevTools mobile, zoom).
 
 ## Reste du Sprint 1 (Semaine 5–6)
-- **Semaine 5** : ~~Didomi~~ ✅ ~~Plausible~~ ✅ livrés → **UX, responsive,
-  accessibilité** (dernier lot de la semaine).
+- **Semaine 5** : ~~Didomi~~ ✅ ~~Plausible~~ ✅ ~~UX/accessibilité (C1–C4)~~ ✅
+  livrés. **Restant avant clôture S5** : exécuter `docs/RECETTE_UX_S5.md` en
+  staging (mesures C5/C6/C7 + checklist B/C/D), corriger uniquement les écarts
+  constatés.
 - **Semaine 6** : stabilisation, performance, non-régression, doc d'exploitation,
   checklist, release candidate.
 
 ## Prochaine action exacte
-**Démarrer UX / responsive / accessibilité** : finition visuelle Home +
-navigation (Divi, design system déjà posé en S1), vérification mobile-first
-360–1440 px sur toutes les pages (Home, `/demande/`, back-office), audit
-accessibilité de base (clavier, focus visible, labels, contrastes AA,
-réduction des animations — déjà en partie posés en S1, à auditer/compléter).
-Aucune nouvelle dépendance analytics/consentement à ce stade.
+**Exécuter la recette staging `docs/RECETTE_UX_S5.md`** : largeurs 320/375/
+768/desktop, navigation clavier complète, focus après erreur/succès, zoom
+200 %, Didomi/Plausible accepté-refusé, puis les **mesures C5 (contraste),
+C6 (zones tactiles), C7 (zoom)** — ne corriger que les écarts constatés,
+consignés avec couleur/ratio avant-après. À l'issue : recommandation GO/NO-GO
+pour la **Release Candidate du Sprint 1** (Semaine 6).
