@@ -76,6 +76,13 @@ final class SupabaseClient implements SupabaseGateway
         $this->request('PATCH', $url, $patch, ['Prefer' => 'return=minimal']);
     }
 
+    public function updateReturning(string $table, array $filters, array $patch): array
+    {
+        $url = add_query_arg($filters, $this->restUrl($table));
+        $response = $this->request('PATCH', $url, $patch, ['Prefer' => 'return=representation']);
+        return is_array($response) ? $response : [];
+    }
+
     /**
      * Appelle une fonction Postgres exposée (PostgREST RPC).
      *

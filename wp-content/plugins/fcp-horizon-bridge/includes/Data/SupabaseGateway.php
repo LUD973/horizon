@@ -32,6 +32,15 @@ interface SupabaseGateway
      */
     public function update(string $table, array $filters, array $patch): void;
 
+    /**
+     * UPDATE renvoyant les lignes affectées (pour un « claim » atomique).
+     *
+     * @param array<string,string> $filters
+     * @param array<string,mixed>  $patch
+     * @return array<int,array<string,mixed>>
+     */
+    public function updateReturning(string $table, array $filters, array $patch): array;
+
     /** @param array<string,mixed> $args */
     public function rpc(string $function, array $args = []): void;
 }
