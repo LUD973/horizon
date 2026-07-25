@@ -12,6 +12,26 @@
     var form = document.getElementById('fcp-enquiry-form');
     if (!form) { return; }
 
+    // --- Analytics (Plausible, gated par consentement) ---
+    // Défensif : jamais bloquant pour le parcours de demande, même si
+    // fcpAnalytics est absent (script non chargé, bloqueur, etc.).
+    function fcpTrack(key, name, properties) {
+        try {
+            if (window.fcpAnalytics) {
+                if (key) {
+                    window.fcpAnalytics.trackOnce(key, name, properties || {});
+                } else {
+                    window.fcpAnalytics.track(name, properties || {});
+                }
+            }
+        } catch (e) { /* jamais bloquant pour la demande */ }
+    }
+
+    fcpTrack('enquiry_form_viewed', 'enquiry_form_viewed', { service_category: 'mobility' });
+
+    var startedTracked = false;
+    var attemptId = 0; // incrémenté à chaque tentative réelle d'envoi (retry autorisé après échec)
+
     var DRAFT_KEY = 'fcp_enquiry_draft_v1';
     var errorsBox = document.getElementById('fcp-form-errors');
     var summary = document.getElementById('fcp-summary');
@@ -73,6 +93,14 @@
     }
 
     form.addEventListener('input', saveDraft);
+    // « started » : une seule fois, à la première interaction RÉELLE. Ne se
+    // déclenche pas pour restoreDraft() ci-dessous (assignation .value par
+    // script ne déclenche pas d'événement input natif).
+    form.addEventListener('input', function () {
+        if (startedTracked) { return; }
+        startedTracked = true;
+        fcpTrack('enquiry_form_started', 'enquiry_form_started', { service_category: 'mobility' });
+    });
     restoreDraft();
     syncProfile();
 
@@ -160,10 +188,19 @@
         submitBtn.disabled = true;
         if (!idempotencyKey) { idempotencyKey = uuid(); }
 
+        // Nouvelle tentative réelle : identifiant dédié (permet un nouveau
+        // « submitted » après un échec, sans jamais dupliquer CETTE tentative).
+        attemptId += 1;
+        var currentAttempt = attemptId;
+        fcpTrack('enquiry_form_submitted:' + currentAttempt, 'enquiry_form_submitted', { service_category: 'mobility' });
+
+        var trackedChannel = '';
+
         freshToken().then(function (token) {
             var payload = serialize();
             payload._fcp_nonce = token;
             payload.company_website = ''; // honeypot vide
+            trackedChannel = payload.preferred_channel || '';
 
             return fetch(cfg.enquiriesUrl, {
                 method: 'POST',
@@ -179,16 +216,23 @@
             submitBtn.disabled = false;
             if ((r.status === 201 || r.status === 200) && r.body.success) {
                 idempotencyKey = null; // succès : on repart neuf pour une éventuelle autre demande
+                fcpTrack('enquiry_form_success:' + currentAttempt, 'enquiry_form_success', {
+                    service_category: 'mobility',
+                    contact_channel: trackedChannel
+                });
                 onSuccess(r.body);
             } else if (r.status === 422 && r.body.errors) {
+                fcpTrack('enquiry_form_error:' + currentAttempt, 'enquiry_form_error');
                 showErrors(Object.keys(r.body.errors).map(function (k) { return r.body.errors[k]; }));
                 summary.hidden = true; reviewBtn.hidden = false;
             } else {
+                fcpTrack('enquiry_form_error:' + currentAttempt, 'enquiry_form_error');
                 showErrors([r.body.message || 'Une erreur est survenue. Merci de réessayer.']);
                 summary.hidden = true; reviewBtn.hidden = false;
             }
         }).catch(function () {
             submitBtn.disabled = false;
+            fcpTrack('enquiry_form_error:' + currentAttempt, 'enquiry_form_error');
             showErrors(['Connexion impossible. Merci de réessayer.']);
         });
     });
