@@ -5,7 +5,11 @@ namespace FCP\Horizon;
 
 use FCP\Horizon\Admin\BackOffice;
 use FCP\Horizon\Api\RestController;
+use FCP\Horizon\Application\Communication\OutboxProcessor;
+use FCP\Horizon\Application\Communication\ProviderRegistry;
 use FCP\Horizon\Application\IpRetention;
+use FCP\Horizon\Data\MessageRepository;
+use FCP\Horizon\Data\SupabaseClient;
 use FCP\Horizon\PublicSite\FormRenderer;
 use FCP\Horizon\Support\Config;
 
@@ -47,6 +51,37 @@ final class Plugin
         // Back-office Horizon (accès protégé par capacité).
         add_action('admin_init', [$this, 'ensureCapability']);
         (new BackOffice($this->config))->register();
+
+        // Outbox de communication : traitement asynchrone (résilience).
+        add_filter('cron_schedules', [$this, 'registerCronSchedule']);
+        add_action('fcp_horizon_process_outbox', [$this, 'runOutbox']);      // récurrent (filet)
+        add_action('fcp_horizon_process_outbox_now', [$this, 'runOutbox']);  // immédiat (après une demande)
+        add_action('init', [$this, 'scheduleOutbox']);
+    }
+
+    /** @param array<string,array{interval:int,display:string}> $schedules */
+    public function registerCronSchedule(array $schedules): array
+    {
+        if (!isset($schedules['fcp_5min'])) {
+            $schedules['fcp_5min'] = ['interval' => 300, 'display' => 'Toutes les 5 minutes (FCP)'];
+        }
+        return $schedules;
+    }
+
+    public function scheduleOutbox(): void
+    {
+        if (!wp_next_scheduled('fcp_horizon_process_outbox')) {
+            wp_schedule_event(time() + 60, 'fcp_5min', 'fcp_horizon_process_outbox');
+        }
+    }
+
+    public function runOutbox(): void
+    {
+        $client = new SupabaseClient($this->config);
+        (new OutboxProcessor(
+            new MessageRepository($client),
+            new ProviderRegistry($this->config),
+        ))->process();
     }
 
     /** Accorde la capacité d'accès Horizon à l'administrateur (idempotent). */

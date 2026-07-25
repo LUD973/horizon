@@ -18,8 +18,10 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
 // Options transitoires éventuelles (rate limiting, caches courts).
 delete_option('fcp_horizon_ratelimit');
 
-// Retire la tâche planifiée de purge des IP.
-$timestamp = wp_next_scheduled('fcp_horizon_purge_ips');
-if ($timestamp) {
-    wp_unschedule_event($timestamp, 'fcp_horizon_purge_ips');
+// Retire les tâches planifiées.
+foreach (['fcp_horizon_purge_ips', 'fcp_horizon_process_outbox'] as $fcp_hook) {
+    $timestamp = wp_next_scheduled($fcp_hook);
+    if ($timestamp) {
+        wp_unschedule_event($timestamp, $fcp_hook);
+    }
 }

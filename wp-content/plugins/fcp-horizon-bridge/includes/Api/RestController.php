@@ -3,11 +3,13 @@ declare(strict_types=1);
 
 namespace FCP\Horizon\Api;
 
+use FCP\Horizon\Application\Communication\NotificationService;
 use FCP\Horizon\Application\EnquiryService;
 use FCP\Horizon\Data\AuditLogRepository;
 use FCP\Horizon\Data\CommunicationRepository;
 use FCP\Horizon\Data\ContactRepository;
 use FCP\Horizon\Data\EnquiryRepository;
+use FCP\Horizon\Data\MessageRepository;
 use FCP\Horizon\Data\SupabaseClient;
 use FCP\Horizon\Data\SupabaseException;
 use FCP\Horizon\Domain\EnquiryValidator;
@@ -164,6 +166,7 @@ final class RestController
             $outcome = $service->submit($result->input(), [
                 'ip'         => $ip,
                 'request_id' => wp_generate_uuid4(),
+                'fiche_base' => admin_url('admin.php?page=fcp-horizon-enquiry&ref='),
             ]);
         } catch (SupabaseException $e) {
             Logger::error('Échec enregistrement demande', ['code' => $e->getCode()]);
@@ -182,6 +185,10 @@ final class RestController
         if ($idempotencyStore !== null) {
             set_transient($idempotencyStore, $payload, self::IDEMPOTENCY_TTL);
         }
+
+        // Déclenche le traitement asynchrone de l'outbox (hors requête client).
+        $this->triggerOutbox();
+
         $response = new WP_REST_Response($payload, 201);
         $this->applyCorsHeader($response, $request);
         return $response;
@@ -295,13 +302,31 @@ final class RestController
     private function makeEnquiryService(): EnquiryService
     {
         $client = new SupabaseClient($this->config);
+        $notifications = new NotificationService(
+            new MessageRepository($client),
+            $this->config->get('FCP_MAIL_INTERNAL'),
+        );
         return new EnquiryService(
             new ContactRepository($client),
             new EnquiryRepository($client),
             new CommunicationRepository($client),
             new AuditLogRepository($client),
             $this->config->get('FCP_WHATSAPP_NUMBER'),
+            $notifications,
         );
+    }
+
+    /** Réveille le traitement de l'outbox sans bloquer la réponse client. */
+    private function triggerOutbox(): void
+    {
+        try {
+            wp_schedule_single_event(time(), 'fcp_horizon_process_outbox_now');
+            if (function_exists('spawn_cron')) {
+                spawn_cron();
+            }
+        } catch (\Throwable $e) {
+            Logger::error('Déclenchement outbox impossible', []);
+        }
     }
 
     // --- Sécurité : CORS ---

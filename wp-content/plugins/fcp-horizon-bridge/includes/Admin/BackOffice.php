@@ -7,6 +7,7 @@ use FCP\Horizon\Data\AuditLogRepository;
 use FCP\Horizon\Data\CommunicationRepository;
 use FCP\Horizon\Data\EnquiryNoteRepository;
 use FCP\Horizon\Data\EnquiryRepository;
+use FCP\Horizon\Data\MessageRepository;
 use FCP\Horizon\Data\SupabaseClient;
 use FCP\Horizon\Data\SupabaseException;
 use FCP\Horizon\Domain\EnquiryStatus;
@@ -36,6 +37,7 @@ final class BackOffice
         add_action('admin_menu', [$this, 'registerMenu']);
         add_action('admin_post_fcp_update_status', [$this, 'handleUpdateStatus']);
         add_action('admin_post_fcp_add_note', [$this, 'handleAddNote']);
+        add_action('admin_post_fcp_requeue_message', [$this, 'handleRequeueMessage']);
     }
 
     public function registerMenu(): void
@@ -140,6 +142,7 @@ final class BackOffice
             }
             $id = (string) $enquiry['id'];
             $communications = (new CommunicationRepository($client))->listForEnquiry($id);
+            $messages = (new MessageRepository($client))->listForEnquiry($id);
             $journal = (new AuditLogRepository($client))->listForRecord($id);
             $notes = (new EnquiryNoteRepository($client))->listForEnquiry($id);
         } catch (SupabaseException $e) {
@@ -191,9 +194,13 @@ final class BackOffice
             echo '<p><em>Statut terminal — aucune transition disponible.</em></p>';
         }
 
-        // Communications
-        echo '<h2>Communications</h2>';
+        // Lien WhatsApp (wa.me) — suivi synthétique
+        echo '<h2>Lien WhatsApp (wa.me)</h2>';
         $this->renderRows($communications, ['channel' => 'Canal', 'type' => 'Type', 'status' => 'Statut', 'created_at' => 'Date']);
+
+        // Messages transactionnels (e-mail / futur WhatsApp) — source de vérité
+        echo '<h2>Messages transactionnels</h2>';
+        $this->renderMessages($messages, $ref);
 
         // Notes internes (écriture autorisée)
         echo '<h2>Notes internes</h2>';
@@ -300,6 +307,33 @@ final class BackOffice
         $this->redirectDetail($ref, 'note');
     }
 
+    /** Relance manuelle contrôlée d'un message échoué. */
+    public function handleRequeueMessage(): void
+    {
+        $this->guard();
+        $ref = isset($_POST['ref']) ? sanitize_text_field(wp_unslash((string) $_POST['ref'])) : '';
+        check_admin_referer('fcp_requeue_' . $ref);
+
+        $messageId = isset($_POST['message_id']) ? sanitize_text_field(wp_unslash((string) $_POST['message_id'])) : '';
+        if (!PublicReference::isValid($ref) || $messageId === '') {
+            $this->redirectDetail($ref, 'error');
+        }
+
+        try {
+            (new MessageRepository($this->client()))->requeue($messageId);
+            // Réveille l'outbox pour un renvoi rapide.
+            wp_schedule_single_event(time(), 'fcp_horizon_process_outbox_now');
+            if (function_exists('spawn_cron')) {
+                spawn_cron();
+            }
+        } catch (SupabaseException $e) {
+            Logger::error('Échec relance message', ['code' => $e->getCode()]);
+            $this->redirectDetail($ref, 'error');
+        }
+
+        $this->redirectDetail($ref, 'requeued');
+    }
+
     // --- Helpers ---
 
     private function guard(): void
@@ -367,6 +401,48 @@ final class BackOffice
         echo '</tbody></table>';
     }
 
+    /**
+     * @param array<int,array<string,mixed>> $rows
+     */
+    private function renderMessages(array $rows, string $ref): void
+    {
+        if ($rows === []) {
+            echo '<p>—</p>';
+            return;
+        }
+        echo '<table class="widefat striped"><thead><tr>'
+            . '<th>Sens</th><th>Canal</th><th>Finalité</th><th>Destinataire</th>'
+            . '<th>Statut</th><th>Horodatage</th><th>Erreur</th><th></th>'
+            . '</tr></thead><tbody>';
+        foreach ($rows as $m) {
+            $status = (string) ($m['status'] ?? '');
+            $stamp = (string) ($m['sent_at'] ?? $m['failed_at'] ?? $m['created_at'] ?? '');
+            $error = trim((string) ($m['error_code'] ?? '') . ' ' . (string) ($m['error_message'] ?? ''));
+            echo '<tr>'
+                . '<td>' . esc_html($m['direction'] === 'inbound' ? '← entrant' : '→ sortant') . '</td>'
+                . '<td>' . esc_html((string) ($m['channel'] ?? '')) . '</td>'
+                . '<td>' . esc_html((string) ($m['message_type'] ?? '')) . '</td>'
+                . '<td>' . esc_html((string) ($m['recipient'] ?? '')) . '</td>'
+                . '<td>' . esc_html($status) . '</td>'
+                . '<td>' . esc_html($stamp) . '</td>'
+                . '<td>' . esc_html($error !== '' ? $error : '—') . '</td>'
+                . '<td>';
+            if ($status === 'failed') {
+                echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0">';
+                wp_nonce_field('fcp_requeue_' . $ref);
+                echo '<input type="hidden" name="action" value="fcp_requeue_message">';
+                echo '<input type="hidden" name="ref" value="' . esc_attr($ref) . '">';
+                echo '<input type="hidden" name="message_id" value="' . esc_attr((string) ($m['id'] ?? '')) . '">';
+                echo '<button class="button button-small">Relancer</button>';
+                echo '</form>';
+            } else {
+                echo '—';
+            }
+            echo '</td></tr>';
+        }
+        echo '</tbody></table>';
+    }
+
     private function redirectDetail(string $ref, string $notice): void
     {
         wp_safe_redirect(admin_url('admin.php?page=' . self::DETAIL . '&ref=' . rawurlencode($ref) . '&fcp_notice=' . $notice));
@@ -377,9 +453,10 @@ final class BackOffice
     {
         $notice = isset($_GET['fcp_notice']) ? sanitize_key((string) $_GET['fcp_notice']) : '';
         $map = [
-            'status' => ['Statut mis à jour.', 'success'],
-            'note'   => ['Note ajoutée.', 'success'],
-            'error'  => ['Action impossible (droits, transition ou données invalides).', 'error'],
+            'status'   => ['Statut mis à jour.', 'success'],
+            'note'     => ['Note ajoutée.', 'success'],
+            'requeued' => ['Message remis en file d’envoi.', 'success'],
+            'error'    => ['Action impossible (droits, transition ou données invalides).', 'error'],
         ];
         if (isset($map[$notice])) {
             $this->notice($map[$notice][0], $map[$notice][1]);

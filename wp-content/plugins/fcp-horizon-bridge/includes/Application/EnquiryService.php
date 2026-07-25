@@ -3,12 +3,14 @@ declare(strict_types=1);
 
 namespace FCP\Horizon\Application;
 
+use FCP\Horizon\Application\Communication\NotificationService;
 use FCP\Horizon\Data\AuditLogRepository;
 use FCP\Horizon\Data\CommunicationRepository;
 use FCP\Horizon\Data\ContactRepository;
 use FCP\Horizon\Data\EnquiryRepository;
 use FCP\Horizon\Domain\EnquiryInput;
 use FCP\Horizon\Domain\WhatsAppMessage;
+use FCP\Horizon\Support\Logger;
 
 /**
  * Orchestration de la soumission d'une demande.
@@ -32,11 +34,12 @@ final class EnquiryService
         private CommunicationRepository $communications,
         private AuditLogRepository $audit,
         private string $whatsappNumber,
+        private ?NotificationService $notifications = null,
     ) {
     }
 
     /**
-     * @param array{ip?:?string, request_id?:?string} $context
+     * @param array{ip?:?string, request_id?:?string, fiche_base?:?string} $context
      * @return array{reference:string, enquiry_id:string, whatsapp_url:string, summary:string}
      */
     public function submit(EnquiryInput $input, array $context = []): array
@@ -60,6 +63,20 @@ final class EnquiryService
             'enquiry_receipt',
             $this->whatsappNumber !== '' ? $this->whatsappNumber : null,
         );
+
+        // Mise en file des accusés (e-mail client + alerte équipe) via l'outbox.
+        // ISOLÉ : un problème de communication ne doit jamais casser la demande.
+        if ($this->notifications !== null) {
+            try {
+                $this->notifications->enqueueEnquiryAcknowledgements(
+                    ['id' => $enquiry['id'], 'public_reference' => $enquiry['public_reference']],
+                    $input,
+                    (string) ($context['fiche_base'] ?? ''),
+                );
+            } catch (\Throwable $e) {
+                Logger::error('Mise en file des accusés impossible', ['code' => $e->getCode()]);
+            }
+        }
 
         $whatsapp = new WhatsAppMessage($enquiry['public_reference'], $input);
 
