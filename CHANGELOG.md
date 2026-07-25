@@ -2,6 +2,27 @@
 
 Toutes les évolutions notables du plugin et du socle Horizon.
 
+## [0.7.0] — Semaine 5 (UX, responsive, accessibilité — formulaire)
+### Ajouté
+- **C1** : `tabindex="-1"` sur `#fcp-form-errors` — le focus programmatique
+  déjà appelé dans `form.js` devient réellement effectif après une erreur.
+- **C2** : `tabindex="-1"` sur `#fcp-confirmation` + `focus({preventScroll:true})`
+  après succès réel, sans double déplacement de défilement.
+- **C3** : état d'envoi visible (« Envoi en cours… », `aria-busy`, bouton
+  visuellement désactivé), restauré uniquement en cas d'échec.
+- **C4** : `scrollIntoView` instantané si `prefers-reduced-motion: reduce`,
+  repli sûr si `matchMedia` indisponible.
+- `tests/Unit/FormRendererMarkupTest.php` + stubs WP de test dans
+  `tests/bootstrap.php` (aucun effet en environnement réel).
+- `docs/UX_ACCESSIBILITY_S5.md`, `docs/RECETTE_UX_S5.md` : documentation,
+  constat sur les template-parts inertes (décision reportée après RC),
+  protocole de mesure C5/C6/C7 (contraste, zones tactiles, zoom 200 %) —
+  corrections conditionnelles à un écart mesuré en staging, non anticipées.
+### Garantie
+- Aucune modification de `Communication`/`Brevo`, `Didomi`/`Plausible`,
+  des événements analytics ni des consentements métier Horizon.
+- 56 tests / 153 assertions — 0 régression sur les 54 précédents.
+
 ## [0.6.0] — Semaine 5 (analytics Plausible, gated par consentement)
 ### Ajouté
 - **`window.fcpAnalytics`** (`track`/`trackOnce`) : file d'attente bornée (20)
