@@ -16,16 +16,21 @@ final class FakeSupabase implements SupabaseGateway
 {
     /** @var array<string,array<int,array<string,mixed>>> */
     public array $store = [
-        'contacts'        => [],
-        'organizations'   => [],
-        'enquiries'       => [],
-        'enquiry_details' => [],
-        'communications'  => [],
-        'audit_logs'      => [],
+        'contacts'               => [],
+        'organizations'          => [],
+        'enquiries'              => [],
+        'enquiry_details'        => [],
+        'communications'         => [],
+        'communication_messages' => [],
+        'enquiry_notes'          => [],
+        'audit_logs'             => [],
     ];
 
     /** @var string[] e-mails pour lesquels le prochain SELECT « rate » (simule une course). */
     public array $missOnceEmails = [];
+
+    /** @var string[] tables dont l'INSERT échoue (simule une indisponibilité). */
+    public array $failInsertTables = [];
 
     /** @var array<int,array{fn:string,args:array<string,mixed>}> */
     public array $rpcCalls = [];
@@ -67,6 +72,9 @@ final class FakeSupabase implements SupabaseGateway
 
     public function insert(string $table, array $row): array
     {
+        if (in_array($table, $this->failInsertTables, true)) {
+            throw new SupabaseException('insert failed (simulated) for ' . $table, 503);
+        }
         if (!isset($row['id'])) {
             $row['id'] = 'id-' . (++$this->idSeq);
         }
@@ -91,19 +99,39 @@ final class FakeSupabase implements SupabaseGateway
 
     public function update(string $table, array $filters, array $patch): void
     {
-        foreach ($this->store[$table] as $i => $row) {
+        $this->applyUpdate($table, $filters, $patch);
+    }
+
+    public function updateReturning(string $table, array $filters, array $patch): array
+    {
+        return $this->applyUpdate($table, $filters, $patch);
+    }
+
+    /**
+     * @param array<string,string> $filters
+     * @param array<string,mixed>  $patch
+     * @return array<int,array<string,mixed>>
+     */
+    private function applyUpdate(string $table, array $filters, array $patch): array
+    {
+        $affected = [];
+        foreach ($this->store[$table] ?? [] as $i => $row) {
             $match = true;
             foreach ($filters as $field => $expr) {
-                if (is_string($expr) && str_starts_with($expr, 'eq.')
-                    && (string) ($row[$field] ?? '') !== $this->eqValue($expr)) {
+                if (!is_string($expr) || !str_starts_with($expr, 'eq.')) {
+                    continue;
+                }
+                if ((string) ($row[$field] ?? '') !== $this->eqValue($expr)) {
                     $match = false;
                     break;
                 }
             }
             if ($match) {
                 $this->store[$table][$i] = array_merge($row, $patch);
+                $affected[] = $this->store[$table][$i];
             }
         }
+        return $affected;
     }
 
     public function rpc(string $function, array $args = []): void
