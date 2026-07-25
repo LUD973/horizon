@@ -2,6 +2,26 @@
 
 Toutes les évolutions notables du plugin et du socle Horizon.
 
+## [0.5.0] — Semaine 5 (consentement Didomi)
+### Ajouté
+- **Consentement (Didomi)** : injection du snippet officiel (jamais reconstruit)
+  au plus haut de `<head>`, injection unique, aucune sortie sans configuration.
+- `ConsentCategory` (Domain, pur) : functional/analytics/marketing ; `functional`
+  jamais envoyé à l'API Didomi (garde-fou testé).
+- Configuration centralisée sans valeur en dur : `DIDOMI_SDK_EMBED`,
+  `DIDOMI_PURPOSE_ANALYTICS`, `DIDOMI_PURPOSE_MARKETING`, `DIDOMI_VENDOR_PLAUSIBLE`.
+- Façade `window.fcpConsent` (`hasConsent`, `onChange`, `openPreferences`) —
+  s'appuie uniquement sur les points d'intégration officiels Didomi
+  (`didomiOnReady`/`didomiEventListeners`), aucun moteur de chargement maison.
+- `docs/CONSENT_DIDOMI.md` : configuration console, variables, mécanisme de
+  chargement natif à appliquer au lot Plausible, procédure de recette.
+### Garantie
+- Sans configuration : `functional` = `true`, `analytics`/`marketing` = `false`
+  (deny-by-default), aucune bannière, aucune erreur.
+- Aucun impact sur la couche Communication/Brevo ni sur les consentements
+  métier Horizon (`contacts.consent_marketing` reste séparé).
+- 48 tests / 138 assertions — 0 régression sur les 43 tests précédents.
+
 ## [0.4.0] — Semaine 5 (couche de communication + Brevo Email)
 ### Ajouté
 - **Couche de communication générique** indépendante du fournisseur : contrats

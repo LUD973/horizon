@@ -5,9 +5,10 @@
 
 ## Repère Git
 - **Branche active** : `claude/fcp-execution-phase-bwtydk`
-- **Dernier commit (avant ce document)** : `042a2da` — docs(comm)
-- **Version plugin** : **v0.4.0**
-- **État Git** : arbre propre, poussé sur `origin/claude/fcp-execution-phase-bwtydk`
+- **Dernier commit (avant ce document)** : `d3e82ae` — feat(consent) lot 1 Didomi
+- **Version plugin** : **v0.5.0** (Didomi)
+- **État Git** : propre après ce commit de documentation, poussé sur
+  `origin/claude/fcp-execution-phase-bwtydk`
 - **Mono-dépôt** : `wp-content/themes/fcp-child`, `wp-content/plugins/fcp-horizon-bridge`,
   `supabase/migrations`, `docs/`.
 
@@ -50,22 +51,50 @@
   transactionnels* (sens, statut, horodatages, erreurs, **Relancer**).
 - **Règle d'or** : un échec e-mail ne perd JAMAIS une demande (vérifié par test).
 
+## Lot livré — Consentement Didomi (Semaine 5)
+- **`ConsentCategory`** (Domain, pur) : `functional` / `analytics` / `marketing` ;
+  `functional` toujours autorisé et **jamais** envoyé à l'API Didomi (garde-fou
+  testé). Séparation stricte avec les consentements **métier** Horizon
+  (`contacts.consent_marketing`), inchangés.
+- **Snippet officiel non reconstruit** : `Config::didomiSdkEmbed()` lit
+  `DIDOMI_SDK_EMBED` (copié tel quel depuis Console Didomi → Publish) et
+  `PublicSite\Consent` l'imprime **verbatim**, une seule fois, en tête de
+  `wp_head`. Sans configuration : **aucune sortie**, aucune bannière, aucune erreur.
+- **Purposes/vendor centralisés** (sans valeur en dur) : `DIDOMI_PURPOSE_ANALYTICS`
+  (défaut `analytics`), `DIDOMI_PURPOSE_MARKETING` (défaut `advertising`),
+  `DIDOMI_VENDOR_PLAUSIBLE` (réservé, vide par défaut).
+- **Façade `window.fcpConsent`** (`assets/js/consent.js`) : `hasConsent(category)`,
+  `onChange(callback)` (multi-abonnés), `openPreferences()` (prêt pour un futur
+  lien « Gérer mes cookies »). S'appuie **uniquement** sur les points
+  d'intégration officiels Didomi (`didomiOnReady`, `didomiEventListeners`,
+  évènement `consent.changed`) — **aucun moteur de chargement maison**.
+  Deny-by-default (`analytics`/`marketing` = `false`) tant que non configuré
+  ou non consenti.
+- **Mécanisme de chargement natif pour Plausible** : documenté dans
+  `docs/CONSENT_DIDOMI.md` (blocage automatique par vendor, ou balisage
+  `data-purpose`/`data-vendor`) — **attribut `type` exact à vérifier** dans la
+  doc Didomi au moment du lot Plausible (non figé, pour éviter tout code deviné).
+
 ## Tests
-- **43 tests / 121 assertions** (unitaires + intégration hors ligne, double
-  Supabase + double provider). Exécution : `vendor/bin/phpunit`.
+- **48 tests / 138 assertions** (unitaires + intégration hors ligne, double
+  Supabase + double provider + Didomi). **0 régression** sur les 43 précédents
+  ni sur la couche Communication/Brevo. Exécution : `vendor/bin/phpunit`.
 
 ## Documentation déjà créée
 - `16_IMPLEMENTATION_PLAN_SOLO.md`, `README.md`, `CHANGELOG.md`
 - `docs/DEPLOYMENT_CHECKLIST.md`, `docs/STAGING_RECETTE.md`
 - `docs/PV_RECETTE_BACKOFFICE_S4.md`
 - `docs/COMMUNICATION_LAYER.md`, `docs/RECETTE_COMMUNICATION_S5.md`
+- `docs/CONSENT_DIDOMI.md`
 - plugin `README.md`, `tests/Integration/README.md`
 
 ## Variables d'environnement (noms uniquement)
 `FCP_ENV`, `FCP_DEBUG`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
 `FCP_ALLOWED_ORIGINS`, `FCP_RATE_LIMIT_PER_MIN`, `FCP_WHATSAPP_NUMBER`,
 `BREVO_API_KEY`, `FCP_MAIL_FROM`, `FCP_MAIL_FROM_NAME`, `FCP_MAIL_INTERNAL`,
-`PLAUSIBLE_DOMAIN`, `DIDOMI_NOTICE_ID`. *(Réservé futur : `BREVO_WHATSAPP_SENDER`.)*
+`PLAUSIBLE_DOMAIN`, `DIDOMI_NOTICE_ID`, `DIDOMI_SDK_EMBED`,
+`DIDOMI_PURPOSE_ANALYTICS`, `DIDOMI_PURPOSE_MARKETING`, `DIDOMI_VENDOR_PLAUSIBLE`.
+*(Réservé futur : `BREVO_WHATSAPP_SENDER`.)*
 Tous en configuration serveur — **jamais dans Git, les logs ou le navigateur**.
 
 ## Points de vigilance
@@ -78,13 +107,15 @@ Tous en configuration serveur — **jamais dans Git, les logs ou le navigateur**
 - Déploiement staging = action manuelle (upload ZIP + exécuter migrations SQL).
 
 ## Reste du Sprint 1 (Semaine 5–6)
-- **Semaine 5 (en cours)** : Didomi (consentement), Plausible (analytics gated),
-  UX, responsive, accessibilité.
+- **Semaine 5 (en cours)** : ~~Didomi~~ ✅ livré → **Plausible** (analytics gated),
+  puis UX, responsive, accessibilité.
 - **Semaine 6** : stabilisation, performance, non-régression, doc d'exploitation,
   checklist, release candidate.
 
 ## Prochaine action exacte
-**Démarrer Didomi** (consentement) : intégration propre pilotée par
-`DIDOMI_NOTICE_ID`, blocage des scripts avant consentement, catégories
-fonctionnel/analytics/marketing, API JS `fcpConsent` pour les futurs services,
-puis Plausible **gated** par le consentement analytics.
+**Démarrer Plausible** (analytics) : script chargé **uniquement** si
+`fcpConsent.hasConsent('analytics')` est vrai (via le mécanisme natif Didomi
+documenté dans `docs/CONSENT_DIDOMI.md` — vérifier l'attribut de blocage exact
+à ce moment-là), événements minimum (ouverture formulaire, début de saisie,
+demande envoyée, clics téléphone/WhatsApp/e-mail), **aucune donnée personnelle**
+transmise à Plausible, aucun événement avant consentement.
