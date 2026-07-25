@@ -23,8 +23,13 @@ final class Config
             'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY',
             'FCP_ALLOWED_ORIGINS', 'FCP_RATE_LIMIT_PER_MIN',
             'FCP_WHATSAPP_NUMBER',
-            'BREVO_API_KEY', 'FCP_MAIL_FROM', 'FCP_MAIL_INTERNAL',
-            'PLAUSIBLE_DOMAIN', 'DIDOMI_NOTICE_ID',
+            'BREVO_API_KEY', 'FCP_MAIL_FROM', 'FCP_MAIL_FROM_NAME', 'FCP_MAIL_INTERNAL',
+            'PLAUSIBLE_DOMAIN',
+            // Didomi : DIDOMI_NOTICE_ID reste informatif (non utilisé pour
+            // reconstruire un snippet). Le SDK est piloté par DIDOMI_SDK_EMBED
+            // (snippet officiel copié depuis la rubrique Publish de la console).
+            'DIDOMI_NOTICE_ID', 'DIDOMI_SDK_EMBED',
+            'DIDOMI_PURPOSE_ANALYTICS', 'DIDOMI_PURPOSE_MARKETING', 'DIDOMI_VENDOR_PLAUSIBLE',
         ];
 
         $values = [];
@@ -81,5 +86,38 @@ final class Config
     public function supabaseConfigured(): bool
     {
         return $this->get('SUPABASE_URL') !== '' && $this->get('SUPABASE_SERVICE_ROLE_KEY') !== '';
+    }
+
+    /**
+     * Snippet officiel Didomi (copié tel quel depuis la rubrique Publish de la
+     * console Didomi). Jamais reconstruit à partir d'un simple identifiant :
+     * la configuration doit contenir le code exact fourni par Didomi.
+     */
+    public function didomiSdkEmbed(): string
+    {
+        return $this->get('DIDOMI_SDK_EMBED');
+    }
+
+    public function didomiConfigured(): bool
+    {
+        return $this->didomiSdkEmbed() !== '';
+    }
+
+    /** Identifiant de purpose Didomi pour la catégorie analytics (à vérifier dans la console). */
+    public function didomiPurposeAnalytics(): string
+    {
+        return $this->get('DIDOMI_PURPOSE_ANALYTICS', 'analytics');
+    }
+
+    /** Identifiant de purpose Didomi pour la catégorie marketing (à vérifier dans la console). */
+    public function didomiPurposeMarketing(): string
+    {
+        return $this->get('DIDOMI_PURPOSE_MARKETING', 'advertising');
+    }
+
+    /** Identifiant de vendor Didomi pour Plausible, si déclaré (réservé — lot Plausible). */
+    public function didomiVendorPlausible(): string
+    {
+        return $this->get('DIDOMI_VENDOR_PLAUSIBLE');
     }
 }

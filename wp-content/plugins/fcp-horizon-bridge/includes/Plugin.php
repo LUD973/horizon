@@ -10,6 +10,7 @@ use FCP\Horizon\Application\Communication\ProviderRegistry;
 use FCP\Horizon\Application\IpRetention;
 use FCP\Horizon\Data\MessageRepository;
 use FCP\Horizon\Data\SupabaseClient;
+use FCP\Horizon\PublicSite\Consent;
 use FCP\Horizon\PublicSite\FormRenderer;
 use FCP\Horizon\Support\Config;
 
@@ -43,6 +44,9 @@ final class Plugin
         // Présentation publique : shortcode du formulaire.
         add_action('init', [$this, 'registerAssets']);
         add_shortcode('fcp_enquiry_form', [$this, 'renderEnquiryForm']);
+
+        // Consentement (Didomi) : sitewide, indépendant du shortcode ci-dessus.
+        (new Consent($this->config))->register();
 
         // Rétention IP : purge quotidienne (12 mois glissants).
         add_action('fcp_horizon_purge_ips', [$this, 'runIpPurge']);
