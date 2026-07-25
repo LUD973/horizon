@@ -7,11 +7,19 @@
  *   - window.didomiOnReady        : callback(Didomi) à l'état initial
  *   - window.didomiEventListeners : { event: 'consent.changed', listener }
  *   - Didomi.getUserConsentStatusForPurpose(purposeId)
+ *   - Didomi.getUserConsentStatusForVendor(vendorId)
  *   - Didomi.preferences.show()   : réouverture du panneau (« Gérer mes cookies »)
  *
  * Catégorie « functional » : toujours autorisée (fonctionnalités strictement
  * nécessaires) — ne correspond à AUCUN purpose Didomi, jamais interrogée
  * auprès de leur API.
+ *
+ * Contrôle vendor (ex. Plausible) : si fcpConsentConfig.vendorPlausible est
+ * renseigné, « analytics » n'est vrai QUE si le purpose Analytics ET ce
+ * vendor sont tous deux autorisés. Vide -> comportement inchangé (purpose
+ * seul). Ce contrôle reste centralisé ICI : aucun autre script du plugin
+ * n'interroge directement le SDK Didomi (analytics.js utilise uniquement
+ * fcpConsent.hasConsent()).
  *
  * Sans configuration (fcpConsentConfig.configured === false) : deny-by-default
  * pour analytics/marketing, aucune tentative de contacter Didomi, aucune erreur.
@@ -35,6 +43,13 @@
             if (Didomi && typeof Didomi.getUserConsentStatusForPurpose === 'function') {
                 analytics = Didomi.getUserConsentStatusForPurpose(cfg.purposeAnalytics || 'analytics') === true;
                 marketing = Didomi.getUserConsentStatusForPurpose(cfg.purposeMarketing || 'advertising') === true;
+
+                // Contrôle vendor additif (ex. Plausible) : purpose ET vendor
+                // requis quand un vendor est configuré. Vide -> inchangé.
+                if (analytics && cfg.vendorPlausible
+                    && typeof Didomi.getUserConsentStatusForVendor === 'function') {
+                    analytics = Didomi.getUserConsentStatusForVendor(cfg.vendorPlausible) === true;
+                }
             }
         } catch (e) {
             analytics = false;

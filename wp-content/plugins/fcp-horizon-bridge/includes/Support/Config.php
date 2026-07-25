@@ -24,7 +24,7 @@ final class Config
             'FCP_ALLOWED_ORIGINS', 'FCP_RATE_LIMIT_PER_MIN',
             'FCP_WHATSAPP_NUMBER',
             'BREVO_API_KEY', 'FCP_MAIL_FROM', 'FCP_MAIL_FROM_NAME', 'FCP_MAIL_INTERNAL',
-            'PLAUSIBLE_DOMAIN',
+            'PLAUSIBLE_DOMAIN', 'PLAUSIBLE_SCRIPT_URL',
             // Didomi : DIDOMI_NOTICE_ID reste informatif (non utilisé pour
             // reconstruire un snippet). Le SDK est piloté par DIDOMI_SDK_EMBED
             // (snippet officiel copié depuis la rubrique Publish de la console).
@@ -119,5 +119,52 @@ final class Config
     public function didomiVendorPlausible(): string
     {
         return $this->get('DIDOMI_VENDOR_PLAUSIBLE');
+    }
+
+    private const DEFAULT_PLAUSIBLE_SCRIPT_URL = 'https://plausible.io/js/script.js';
+
+    /**
+     * Domaine Plausible, validé (sinon neutralisé -> non configuré). Un
+     * domaine malformé ne doit jamais atteindre le navigateur.
+     */
+    public function plausibleDomain(): string
+    {
+        $domain = $this->get('PLAUSIBLE_DOMAIN');
+        return $this->looksLikeDomain($domain) ? $domain : '';
+    }
+
+    public function plausibleConfigured(): bool
+    {
+        return $this->plausibleDomain() !== '';
+    }
+
+    /**
+     * URL du script Plausible (auto-hébergement possible). Une URL invalide
+     * ou non HTTPS est neutralisée au profit de la valeur par défaut — jamais
+     * envoyée telle quelle au navigateur.
+     */
+    public function plausibleScriptUrl(): string
+    {
+        $url = $this->get('PLAUSIBLE_SCRIPT_URL', self::DEFAULT_PLAUSIBLE_SCRIPT_URL);
+        return $this->looksLikeHttpsUrl($url) ? $url : self::DEFAULT_PLAUSIBLE_SCRIPT_URL;
+    }
+
+    private function looksLikeDomain(string $domain): bool
+    {
+        if ($domain === '') {
+            return false;
+        }
+        return (bool) preg_match(
+            '/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i',
+            $domain
+        );
+    }
+
+    private function looksLikeHttpsUrl(string $url): bool
+    {
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return false;
+        }
+        return parse_url($url, PHP_URL_SCHEME) === 'https';
     }
 }

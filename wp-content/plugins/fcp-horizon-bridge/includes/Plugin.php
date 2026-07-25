@@ -10,6 +10,7 @@ use FCP\Horizon\Application\Communication\ProviderRegistry;
 use FCP\Horizon\Application\IpRetention;
 use FCP\Horizon\Data\MessageRepository;
 use FCP\Horizon\Data\SupabaseClient;
+use FCP\Horizon\PublicSite\Analytics;
 use FCP\Horizon\PublicSite\Consent;
 use FCP\Horizon\PublicSite\FormRenderer;
 use FCP\Horizon\Support\Config;
@@ -47,6 +48,9 @@ final class Plugin
 
         // Consentement (Didomi) : sitewide, indépendant du shortcode ci-dessus.
         (new Consent($this->config))->register();
+
+        // Analytics (Plausible) : gated par le consentement, sitewide.
+        (new Analytics($this->config))->register();
 
         // Rétention IP : purge quotidienne (12 mois glissants).
         add_action('fcp_horizon_purge_ips', [$this, 'runIpPurge']);
@@ -121,7 +125,7 @@ final class Plugin
         wp_register_script(
             'fcp-form',
             FCP_HORIZON_URL . 'assets/js/form.js',
-            [],
+            ['fcp-analytics'], // garantit que window.fcpAnalytics existe avant l'exécution
             FCP_HORIZON_VERSION,
             true
         );
