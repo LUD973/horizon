@@ -54,6 +54,15 @@
         el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
     }
 
+    // --- Focus programmatique différé (C1/C2) : un appel .focus() juste après
+    // avoir retiré `hidden` peut être ignoré par le navigateur tant que le
+    // recalcul d'affichage n'a pas eu lieu. On laisse passer une frame avant
+    // de focaliser, pour cibler l'élément une fois réellement visible. ---
+    function focusSoon(el, opts) {
+        var run = function () { el.focus(opts); };
+        if (window.requestAnimationFrame) { window.requestAnimationFrame(run); } else { run(); }
+    }
+
     // --- État d'envoi (C3) : texte temporaire + aria-busy, restauré en cas
     // d'échec uniquement (le formulaire est masqué après un succès réel). ---
     var submitBtnDefaultText = null;
@@ -155,7 +164,7 @@
         errorsBox.innerHTML = '<ul>' + list.map(function (e) {
             return '<li>' + e.replace(/</g, '&lt;') + '</li>';
         }).join('') + '</ul>';
-        errorsBox.focus && errorsBox.focus();
+        focusSoon(errorsBox);
     }
 
     // --- Récapitulatif ---
@@ -296,6 +305,6 @@
         // Focus programmatique (C2) : preventScroll évite un second saut de
         // défilement redondant avec revealScrollInto ci-dessus (pas de double
         // déplacement). Annonce correcte via aria-live="polite" déjà en place.
-        confirmation.focus({ preventScroll: true });
+        focusSoon(confirmation, { preventScroll: true });
     }
 })();

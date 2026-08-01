@@ -2,6 +2,18 @@
 
 Toutes les évolutions notables du plugin et du socle Horizon.
 
+## [0.7.1] — Semaine 5 (correctif recette — focus programmatique C1/C2)
+### Corrigé
+- **A4** (recette staging) : le focus automatique vers `#fcp-form-errors`
+  (après erreur, C1) et `#fcp-confirmation` (après succès, C2) pouvait être
+  ignoré par le navigateur lorsque l'appel `.focus()` intervenait dans la
+  même exécution que le retrait de `hidden` (recalcul d'affichage pas encore
+  effectué). Le focus est désormais différé d'une frame (`requestAnimationFrame`,
+  repli synchrone si indisponible) via un nouvel helper `focusSoon()`.
+### Garantie
+- Aucune autre modification (`Communication`/Brevo, Didomi/Plausible,
+  consentements, logique métier) — 56 tests / 153 assertions, 0 régression.
+
 ## [0.7.0] — Semaine 5 (UX, responsive, accessibilité — formulaire)
 ### Ajouté
 - **C1** : `tabindex="-1"` sur `#fcp-form-errors` — le focus programmatique
