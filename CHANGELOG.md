@@ -2,6 +2,17 @@
 
 Toutes les évolutions notables du plugin et du socle Horizon.
 
+## [0.7.2] — Semaine 5 (correctif recette — désynchronisation du récapitulatif)
+### Corrigé
+- **A2** (recette staging) : les champs du formulaire restent modifiables
+  pendant l'affichage du récapitulatif (pas de verrouillage). Toute
+  modification (`input`/`change`) alors que le récapitulatif est affiché
+  l'invalide désormais automatiquement (retour à « Vérifier ma demande »)
+  au lieu de laisser un texte qui ne correspond plus aux données réellement
+  envoyées à la confirmation.
+### Garantie
+- Aucune autre modification — 56 tests / 153 assertions, 0 régression.
+
 ## [0.7.1] — Semaine 5 (correctif recette — focus programmatique C1/C2)
 ### Corrigé
 - **A4** (recette staging) : le focus automatique vers `#fcp-form-errors`

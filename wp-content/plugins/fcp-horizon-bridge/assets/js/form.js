@@ -191,6 +191,19 @@
         reviewBtn.hidden = false;
     });
 
+    // --- Anti-désynchronisation du récapitulatif ---
+    // Les champs restent modifiables même une fois le récapitulatif affiché
+    // (pas de verrouillage). Toute modification pendant cet état invalide le
+    // récapitulatif affiché (retour à « Vérifier ma demande ») plutôt que de
+    // laisser un texte qui ne correspond plus aux données réellement envoyées.
+    function invalidateSummaryIfShown() {
+        if (summary.hidden) { return; }
+        summary.hidden = true;
+        reviewBtn.hidden = false;
+    }
+    form.addEventListener('input', invalidateSummaryIfShown);
+    form.addEventListener('change', invalidateSummaryIfShown);
+
     // Clé d'idempotence : stable pour une même soumission logique (réutilisée
     // si l'utilisateur réessaie après une erreur réseau) — évite les doublons.
     var idempotencyKey = null;
