@@ -5,10 +5,10 @@
 
 ## Repère Git
 - **Branche active** : `claude/fcp-execution-phase-bwtydk`
-- **Dernier commit (avant ce document)** : `3961575` — docs(a11y) v0.7.0
-- **Version plugin** : **v0.7.0** (UX/accessibilité formulaire)
-- **État Git** : propre après ce commit de documentation, poussé sur
-  `origin/claude/fcp-execution-phase-bwtydk`
+- **Dernier commit** : `0f4b1e8` — fix(ux) v0.7.3 (correctifs recette S5)
+- **Version plugin** : **v0.7.3** — **Semaine 5 officiellement close, GO Release Candidate Sprint 1**
+- **État Git** : propre, poussé sur `origin/claude/fcp-execution-phase-bwtydk`
+- **Tag conseillé** : `v0.7.3-rc1` (non créé automatiquement — à valider explicitement)
 - **Mono-dépôt** : `wp-content/themes/fcp-child`, `wp-content/plugins/fcp-horizon-bridge`,
   `supabase/migrations`, `docs/`.
 
@@ -172,18 +172,36 @@ Tous en configuration serveur — **jamais dans Git, les logs ou le navigateur**
 - Apparence du bandeau Didomi (boutons équilibrés, sans dark pattern).
 - Mesures C5/C6/C7 elles-mêmes (outil de contraste, DevTools mobile, zoom).
 
+## Clôture officielle — Semaine 5 (01/08/2026)
+
+**Recette staging complète exécutée** (16 points, `docs/RECETTE_UX_S5.md`,
+section « Synthèse »). Trois anomalies détectées et corrigées pendant la
+recette :
+- **A3 (Bloquante)** : staging exécutait une version obsolète (0.3.0) →
+  redéployé.
+- **A4 (Majeure)** : focus programmatique C1/C2 non fiable (timing) →
+  corrigé v0.7.1 (`focusSoon()`), vérifié en conditions réelles.
+- **A2 (Majeure)** : récapitulatif désynchronisable + `hidden` neutralisé
+  visuellement par le thème sur les `<section>` → corrigé v0.7.2 + v0.7.3,
+  vérifié.
+
+Deux réserves **Mineures** restent ouvertes, sans impact bloquant :
+- **A5** : configuration Didomi/Plausible absente sur ce staging (action
+  serveur, `wp-config.php` — hors code).
+- Défilement automatique manquant sur le bouton « Modifier » (cosmétique).
+
+**Décision : ✅ GO Release Candidate Sprint 1 — version v0.7.3.**
+
 ## Reste du Sprint 1 (Semaine 5–6)
 - **Semaine 5** : ~~Didomi~~ ✅ ~~Plausible~~ ✅ ~~UX/accessibilité (C1–C4)~~ ✅
-  livrés. **Restant avant clôture S5** : exécuter `docs/RECETTE_UX_S5.md` en
-  staging (mesures C5/C6/C7 + checklist B/C/D), corriger uniquement les écarts
-  constatés.
-- **Semaine 6** : stabilisation, performance, non-régression, doc d'exploitation,
-  checklist, release candidate.
+  ~~Recette staging~~ ✅ — **close**.
+- **Semaine 6** : stabilisation, performance, non-régression, documentation
+  d'exploitation, restauration config Didomi/Plausible (A5), préparation de
+  la Release Candidate finale. Détail : voir plan dédié communiqué en fin de
+  session S5.
 
 ## Prochaine action exacte
-**Exécuter la recette staging `docs/RECETTE_UX_S5.md`** : largeurs 320/375/
-768/desktop, navigation clavier complète, focus après erreur/succès, zoom
-200 %, Didomi/Plausible accepté-refusé, puis les **mesures C5 (contraste),
-C6 (zones tactiles), C7 (zoom)** — ne corriger que les écarts constatés,
-consignés avec couleur/ratio avant-après. À l'issue : recommandation GO/NO-GO
-pour la **Release Candidate du Sprint 1** (Semaine 6).
+**Démarrer la Semaine 6** : restaurer la configuration Didomi/Plausible sur
+staging (A5), revalider les scénarios réels bandeau/analytics, puis
+enchaîner sur la stabilisation/performance/documentation d'exploitation
+avant la Release Candidate finale du Sprint 1.

@@ -79,9 +79,45 @@ Mesurer en DevTools (mode mobile) la hauteur/largeur réelle rendue de chaque
 | Reflow à 200 % | pas de scroll horizontal, pas de contenu tronqué | *(à relever)* | *(si écart)* |
 | Boutons critiques (Confirmer, Vérifier) | toujours visibles et cliquables | *(à relever)* | *(si écart)* |
 
-## Synthèse à compléter après recette
-- Contrôles automatisés : ✅ 56/56 tests, 0 régression.
-- Contrôles manuels B/C/D : à cocher lors de la recette staging.
-- C5/C6/C7 : mesures à consigner ; corrections **uniquement si écart constaté**.
-- Décision GO/NO-GO Release Candidate : voir `docs/HORIZON_CONTINUITY_SPRINT1.md`
-  après recette.
+## Synthèse — Recette réalisée le 01/08/2026 (staging)
+
+### Tableau des contrôles
+
+| # | Contrôle | Résultat |
+|---|---|---|
+| 1 | Contraste (C5) | ✅ GO — `.fcp-consent label` 4,83:1 (eyedropper + calcul manuel), `.fcp-cta--gold` 6,48:1, `.fcp-form__errors` 10,27:1 — tous ≥ 4,5:1, aucune correction nécessaire |
+| 2 | Zones tactiles (C6) | ✅ GO — boutons `.fcp-cta` et cases de consentement mesurés ≥ 44×44 px (2 mesures directes, 2 par construction via classe partagée) |
+| 3 | Zoom navigateur 200 % (C7) | ✅ GO — aucun débordement horizontal, boutons entièrement visibles/cliquables |
+| 4 | Responsive 320/375/768/Desktop | ✅ GO sur les 4 largeurs |
+| 5 | Navigation clavier complète | ✅ GO — parcours entier accessible, ordre logique, focus visible |
+| 6 | Focus après erreur (C1) | ✅ GO (après correctif v0.7.1) |
+| 7 | Focus après succès (C2) | ✅ GO (après correctif v0.7.1) |
+| 8 | Bouton « Envoi en cours… » (C3) | ✅ GO |
+| 9 | `prefers-reduced-motion` (C4) | ✅ GO |
+| 10-13 | Didomi/Plausible accepté/refusé/actif/inactif | ⚠️ GO partiel — comportement de repli validé (pas de bandeau, pas d'erreur) ; scénario réel non testable, config absente sur ce staging (A5) |
+| 14 | Vérification réseau | ✅ GO — 200/201 sur les appels métier, aucune erreur, aucun appel externe suspect |
+| 15 | Vérification console JavaScript | ✅ GO — seule erreur présente = extension navigateur tierce, aucune erreur du plugin |
+| 16 | Parcours complet de bout en bout | ✅ GO |
+
+### Anomalies détectées et statut final
+
+| ID | Titre | Classification | Statut |
+|---|---|---|---|
+| A3 | Staging exécutait une version obsolète du plugin (0.3.0 au lieu de 0.7.0) | 🔴 Bloquante | ✅ Résolue (redéploiement) |
+| A4 | Focus programmatique non fiable après affichage dynamique (C1 et C2) — timing d'exécution vs. recalcul d'affichage | 🟠 Majeure | ✅ Corrigée v0.7.1 (`focusSoon()`, `requestAnimationFrame`), vérifiée en conditions réelles (visiteur anonyme) |
+| A2 | Récapitulatif non resynchronisé si un champ est modifié sans repasser par « Modifier » ; `hidden` neutralisé visuellement par un `display` du thème sur les balises `<section>` | 🟠 Majeure | ✅ Corrigée v0.7.2 (invalidation auto du récap) + v0.7.3 (CSS `[hidden]` ciblé), vérifiée |
+| A1 | Bouton « Modifier » sans défilement automatique vers le formulaire | 🟡 Mineure | ✅ Corrigée en tant qu'effet du correctif A2 (le récap disparaît maintenant réellement) — le défilement automatique manquant reste un point d'amélioration UX mineur, non bloquant |
+| A5 | Configuration Didomi/Plausible absente sur ce staging | 🟡 Mineure (config) | 🔓 Ouverte — action serveur (`wp-config.php`), pas de code ; empêche seulement la validation du scénario réel bandeau/analytics |
+
+### Recommandations
+- **A5** : restaurer `DIDOMI_SDK_EMBED` et `PLAUSIBLE_DOMAIN` sur le staging pour revalider en conditions réelles les lots 0.5.0/0.6.0 (Semaine 6).
+- Conserver la vigilance de déploiement révélée par A3 : toujours vérifier le numéro de version affiché après toute mise à jour de plugin sur staging.
+- Décision de câblage/archivage des template-parts inertes : toujours reportée après la Release Candidate (inchangé).
+
+### Décision finale
+
+## ✅ GO Release Candidate Sprint 1
+
+Plus aucune anomalie **Bloquante** ou **Majeure** ouverte. Seules subsistent deux réserves **Mineures** (A5 : configuration serveur à restaurer ; défilement automatique du bouton « Modifier » resté non implémenté, cosmétique) — sans impact sur la fiabilité ni l'accessibilité du parcours.
+
+**Version validée : v0.7.3.** Voir `docs/HORIZON_CONTINUITY_SPRINT1.md` pour la clôture officielle et le plan de Semaine 6.
