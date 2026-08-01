@@ -2,6 +2,17 @@
 
 Toutes les évolutions notables du plugin et du socle Horizon.
 
+## [0.7.3] — Semaine 5 (correctif recette — `hidden` neutralisé par le thème)
+### Corrigé
+- **A2 (suite)** : le correctif 0.7.2 positionnait correctement l'attribut
+  `hidden` (vérifié via `element.hidden === true`), mais le thème applique un
+  `display` explicite aux balises `<section>`, ce qui neutralise l'effet
+  visuel natif de `[hidden]`. Ajout de `.fcp-summary[hidden]`,
+  `.fcp-confirmation[hidden] { display: none; }` dans `form.css` pour
+  rétablir l'effet attendu sans dépendre du thème.
+### Garantie
+- Aucune autre modification — 56 tests / 153 assertions, 0 régression.
+
 ## [0.7.2] — Semaine 5 (correctif recette — désynchronisation du récapitulatif)
 ### Corrigé
 - **A2** (recette staging) : les champs du formulaire restent modifiables

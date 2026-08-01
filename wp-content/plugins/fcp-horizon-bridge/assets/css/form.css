@@ -105,6 +105,15 @@
 .fcp-confirmation__ref { font-size: 1.1rem; }
 .fcp-confirmation__note { color: var(--_grey); margin-top: 1rem; }
 
+/* Le thème applique un `display` explicite aux balises <section>, ce qui
+   neutralise l'attribut natif `hidden` (l'affichage du thème l'emporte sur
+   la feuille de style du navigateur). On rétablit explicitement l'effet
+   attendu, sans dépendre du thème. */
+.fcp-summary[hidden],
+.fcp-confirmation[hidden] {
+    display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
     * { scroll-behavior: auto !important; }
 }
