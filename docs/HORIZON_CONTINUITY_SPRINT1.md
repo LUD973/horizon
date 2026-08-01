@@ -187,7 +187,11 @@ recette :
 
 Deux réserves **Mineures** restent ouvertes, sans impact bloquant :
 - **A5** : configuration Didomi/Plausible absente sur ce staging (action
-  serveur, `wp-config.php` — hors code).
+  serveur, `wp-config.php` — hors code). **Décision (Semaine 6) : reportée
+  sciemment** — Didomi (gratuit en petit volume) et Plausible (payant, hors
+  version auto-hébergée) représentent un choix commercial, pas un blocage
+  technique. Le comportement de repli (deny-by-default, aucune erreur) reste
+  la garantie en vigueur tant que la décision n'est pas prise.
 - Défilement automatique manquant sur le bouton « Modifier » (cosmétique).
 
 **Décision : ✅ GO Release Candidate Sprint 1 — version v0.7.3.**
@@ -201,7 +205,6 @@ Deux réserves **Mineures** restent ouvertes, sans impact bloquant :
   session S5.
 
 ## Prochaine action exacte
-**Démarrer la Semaine 6** : restaurer la configuration Didomi/Plausible sur
-staging (A5), revalider les scénarios réels bandeau/analytics, puis
-enchaîner sur la stabilisation/performance/documentation d'exploitation
-avant la Release Candidate finale du Sprint 1.
+**Semaine 6, A5 reportée** (décision commerciale, cf. ci-dessus) : passer
+directement à la stabilisation / vérification performance / documentation
+d'exploitation, avant la Release Candidate finale du Sprint 1.
