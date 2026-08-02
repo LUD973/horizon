@@ -5,12 +5,24 @@
 
 ## Repère Git
 - **Branche active** : `claude/fcp-execution-phase-bwtydk`
-- **Dernier commit** : `08bb619` — fix(consent,analytics) v0.8.1
-- **Version plugin** : **v0.8.1**
-- **Tag publié** : `v0.7.3-rc1` (Release Candidate Sprint 1, clôture Semaine 5)
+- **Dernier commit** : `34df7af` — chore(theme) clôture Sprint 1 (template-parts inertes supprimés)
+- **Version plugin** : **v0.8.1** (inchangée — ce lot ne touche que le thème)
+- **Version thème `fcp-child`** : **v0.2.0**
+- **Tags publiés** : `v0.7.3-rc1` (clôture Semaine 5), `v1.0.0-rc1` (RC finale
+  initiale, avant audit template-parts)
 - **État Git** : propre, poussé sur `origin/claude/fcp-execution-phase-bwtydk`
 - **Mono-dépôt** : `wp-content/themes/fcp-child`, `wp-content/plugins/fcp-horizon-bridge`,
   `supabase/migrations`, `docs/`.
+
+## Clôture Sprint 1 — Audit final des template-parts (Semaine 6)
+Décision appliquée (voir aussi `docs/UX_ACCESSIBILITY_S5.md` section 4) :
+**suppression** des 4 template-parts inertes, de `nav.js` et de l'enregistrement
+de menu inutilisé ; `home.css` renommé `global.css` et allégé (conserve
+uniquement la règle sitewide active `focus-visible`) ; `tokens.css` conservé
+intégralement (dépendance réelle du plugin). Aucun fichier plugin modifié.
+Vérification exhaustive (`grep` sur tout le dépôt) : zéro `get_template_part()`,
+zéro `wp_nav_menu()` référençant ces éléments. 59/59 tests plugin toujours
+verts (non concernés).
 
 ## Semaine 6 — Migration vers des solutions gratuites (consentement/analytics)
 - **A5 résolue** : Didomi → **tarteaucitron.js**, Plausible → **GoatCounter**
