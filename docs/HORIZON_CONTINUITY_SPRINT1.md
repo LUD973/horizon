@@ -140,6 +140,8 @@
 - `docs/CONSENT_DIDOMI.md`
 - `docs/ANALYTICS_PLAUSIBLE.md`
 - `docs/UX_ACCESSIBILITY_S5.md`, `docs/RECETTE_UX_S5.md`
+- `docs/EXPLOITATION.md` (Semaine 6 : procédure de déploiement + vérification
+  de version, sécurité des identifiants, rotation)
 - plugin `README.md`, `tests/Integration/README.md`
 
 ## Variables d'environnement (noms uniquement)
