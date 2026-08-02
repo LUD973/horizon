@@ -3,9 +3,11 @@ Theme Name:   FCP — French Class Prestige (enfant Divi)
 Theme URI:    https://frenchclassprestige.example
 Description:  Thème enfant Divi pour French Class Prestige. Présentation uniquement — aucune logique métier (celle-ci vit dans le plugin fcp-horizon-bridge). Direction : luxe lumineux, ivoire dominant, bleu marine structurant, or discret.
 Template:     Divi
-Version:      0.1.0
+Version:      0.2.0
 Text Domain:  fcp-child
 */
 
-/* Les styles réels sont chargés via assets/css/tokens.css puis assets/css/home.css
-   (voir functions.php). Ce fichier ne sert qu'à déclarer le thème enfant. */
+/* Les styles réels sont chargés via assets/css/tokens.css puis assets/css/global.css
+   (voir functions.php). Ce fichier ne sert qu'à déclarer le thème enfant.
+   (Semaine 6 — clôture Sprint 1 : template-parts inertes et nav.js supprimés,
+   home.css réduit et renommé global.css — cf. docs/HORIZON_CONTINUITY_SPRINT1.md.) */

@@ -86,19 +86,22 @@ cf. section 4).
   code supplémentaire.
 - Réglage de l'apparence du bandeau Didomi (boutons équilibrés, cf. lot Didomi).
 
-## 4. Statut des template-parts inertes (documenté, non modifié)
-| Élément | Statut |
-|---|---|
-| `template-parts/header.php` | présent dans le dépôt, **non inclus** par le thème actuel |
-| `template-parts/hero.php` | présent dans le dépôt, **non inclus** par le thème actuel |
-| `template-parts/intent-selector.php` | présent dans le dépôt, **non inclus** par le thème actuel |
-| `template-parts/footer.php` | présent dans le dépôt, **non inclus** par le thème actuel |
-| `assets/js/nav.js` | présent, enqueue sitewide, **cible des classes absentes de la Home Divi réelle** |
-| `tokens.css`/`home.css` (règles `.fcp-header`, `.fcp-hero`…) | chargées sitewide, **inertes** sur la Home réelle |
+## 4. Statut des template-parts inertes — **résolu en clôture Sprint 1 (Semaine 6)**
+Décision prise et appliquée lors de l'audit de clôture Sprint 1 (voir
+`docs/HORIZON_CONTINUITY_SPRINT1.md`, section clôture) :
 
-**Décision de câblage, d'archivage ou de suppression : reportée après la
-Release Candidate du Sprint 1.** Aucune tentative d'activation silencieuse
-dans ce lot.
+| Élément | Statut à date de ce document (S5) | Décision finale (clôture Sprint 1) |
+|---|---|---|
+| `template-parts/header.php` | non inclus par le thème | **Supprimé** (aucune référence, `get_template_part()` absent partout) |
+| `template-parts/hero.php` | non inclus par le thème | **Supprimé** (idem) |
+| `template-parts/intent-selector.php` | non inclus par le thème | **Supprimé** (idem) |
+| `template-parts/footer.php` | non inclus par le thème | **Supprimé** (idem) |
+| `assets/js/nav.js` | enqueue sitewide, cible des classes absentes | **Supprimé** (no-op confirmé — ciblait exclusivement des classes de `header.php`, lui-même supprimé) |
+| `tokens.css` | chargé sitewide | **Conservé** — dépendance réelle (variables `--fcp-*` consommées par `form.css`, règle globale `prefers-reduced-motion`) |
+| `home.css` (`.fcp-header`, `.fcp-hero`, `.fcp-cta`…) | chargé sitewide, inerte sauf la règle `focus-visible` | **Renommé `global.css`, allégé** — ne conserve que la règle sitewide active (`a:focus-visible, button:focus-visible`) ; risque de collision de classe `.fcp-cta` avec le plugin (form.css) ainsi levé |
+
+Ce lot de nettoyage n'a touché **aucun fichier du plugin** — uniquement le
+thème `fcp-child` (version bump 0.1.0 → 0.2.0).
 
 ## 5. C5 à C7 — mesure de recette d'abord (non codés par anticipation)
 Voir `docs/RECETTE_UX_S5.md`. **Aucune couleur, aucune taille de cible tactile,

@@ -1,0 +1,12 @@
+/* =============================================================================
+   French Class Prestige — Styles globaux sitewide.
+   ========================================================================== */
+
+/* --- Focus visible (accessibilité AA) --- */
+/* Règle générique, appliquée à tout le site (contenu Divi compris) : ne cible
+   aucune classe FCP spécifique, donc aucune dépendance à un template-part. */
+a:focus-visible,
+button:focus-visible {
+    outline: 3px solid var(--fcp-gold);
+    outline-offset: 2px;
+}
