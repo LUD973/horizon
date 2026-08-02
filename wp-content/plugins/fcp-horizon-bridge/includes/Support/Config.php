@@ -24,12 +24,8 @@ final class Config
             'FCP_ALLOWED_ORIGINS', 'FCP_RATE_LIMIT_PER_MIN',
             'FCP_WHATSAPP_NUMBER',
             'BREVO_API_KEY', 'FCP_MAIL_FROM', 'FCP_MAIL_FROM_NAME', 'FCP_MAIL_INTERNAL',
-            'PLAUSIBLE_DOMAIN', 'PLAUSIBLE_SCRIPT_URL',
-            // Didomi : DIDOMI_NOTICE_ID reste informatif (non utilisé pour
-            // reconstruire un snippet). Le SDK est piloté par DIDOMI_SDK_EMBED
-            // (snippet officiel copié depuis la rubrique Publish de la console).
-            'DIDOMI_NOTICE_ID', 'DIDOMI_SDK_EMBED',
-            'DIDOMI_PURPOSE_ANALYTICS', 'DIDOMI_PURPOSE_MARKETING', 'DIDOMI_VENDOR_PLAUSIBLE',
+            'GOATCOUNTER_ENDPOINT', 'GOATCOUNTER_SCRIPT_URL',
+            'TARTEAUCITRON_PRIVACY_URL', 'TARTEAUCITRON_SCRIPT_URL',
         ];
 
         $values = [];
@@ -88,76 +84,61 @@ final class Config
         return $this->get('SUPABASE_URL') !== '' && $this->get('SUPABASE_SERVICE_ROLE_KEY') !== '';
     }
 
+    private const DEFAULT_GOATCOUNTER_SCRIPT_URL = 'https://gc.zgo.at/count.js';
+    private const DEFAULT_TARTEAUCITRON_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/tarteaucitronjs@1/tarteaucitron.min.js';
+
     /**
-     * Snippet officiel Didomi (copié tel quel depuis la rubrique Publish de la
-     * console Didomi). Jamais reconstruit à partir d'un simple identifiant :
-     * la configuration doit contenir le code exact fourni par Didomi.
+     * Point d'entrée GoatCounter (ex. https://code.goatcounter.com/count),
+     * validé (sinon neutralisé -> non configuré). Une valeur malformée ne
+     * doit jamais atteindre le navigateur.
      */
-    public function didomiSdkEmbed(): string
+    public function goatcounterEndpoint(): string
     {
-        return $this->get('DIDOMI_SDK_EMBED');
+        $endpoint = $this->get('GOATCOUNTER_ENDPOINT');
+        return $this->looksLikeHttpsUrl($endpoint) ? $endpoint : '';
     }
 
-    public function didomiConfigured(): bool
+    public function goatcounterConfigured(): bool
     {
-        return $this->didomiSdkEmbed() !== '';
-    }
-
-    /** Identifiant de purpose Didomi pour la catégorie analytics (à vérifier dans la console). */
-    public function didomiPurposeAnalytics(): string
-    {
-        return $this->get('DIDOMI_PURPOSE_ANALYTICS', 'analytics');
-    }
-
-    /** Identifiant de purpose Didomi pour la catégorie marketing (à vérifier dans la console). */
-    public function didomiPurposeMarketing(): string
-    {
-        return $this->get('DIDOMI_PURPOSE_MARKETING', 'advertising');
-    }
-
-    /** Identifiant de vendor Didomi pour Plausible, si déclaré (réservé — lot Plausible). */
-    public function didomiVendorPlausible(): string
-    {
-        return $this->get('DIDOMI_VENDOR_PLAUSIBLE');
-    }
-
-    private const DEFAULT_PLAUSIBLE_SCRIPT_URL = 'https://plausible.io/js/script.js';
-
-    /**
-     * Domaine Plausible, validé (sinon neutralisé -> non configuré). Un
-     * domaine malformé ne doit jamais atteindre le navigateur.
-     */
-    public function plausibleDomain(): string
-    {
-        $domain = $this->get('PLAUSIBLE_DOMAIN');
-        return $this->looksLikeDomain($domain) ? $domain : '';
-    }
-
-    public function plausibleConfigured(): bool
-    {
-        return $this->plausibleDomain() !== '';
+        return $this->goatcounterEndpoint() !== '';
     }
 
     /**
-     * URL du script Plausible (auto-hébergement possible). Une URL invalide
+     * URL du script GoatCounter (auto-hébergement possible). Une URL invalide
      * ou non HTTPS est neutralisée au profit de la valeur par défaut — jamais
      * envoyée telle quelle au navigateur.
      */
-    public function plausibleScriptUrl(): string
+    public function goatcounterScriptUrl(): string
     {
-        $url = $this->get('PLAUSIBLE_SCRIPT_URL', self::DEFAULT_PLAUSIBLE_SCRIPT_URL);
-        return $this->looksLikeHttpsUrl($url) ? $url : self::DEFAULT_PLAUSIBLE_SCRIPT_URL;
+        $url = $this->get('GOATCOUNTER_SCRIPT_URL', self::DEFAULT_GOATCOUNTER_SCRIPT_URL);
+        return $this->looksLikeHttpsUrl($url) ? $url : self::DEFAULT_GOATCOUNTER_SCRIPT_URL;
     }
 
-    private function looksLikeDomain(string $domain): bool
+    /**
+     * Lien vers la politique de confidentialité, passé tel quel à
+     * `tarteaucitron.init()` (option publique du CMP, pas un secret). Une
+     * valeur absente ou invalide désactive le CMP (aucune bannière chargée).
+     */
+    public function tarteaucitronPrivacyUrl(): string
     {
-        if ($domain === '') {
-            return false;
-        }
-        return (bool) preg_match(
-            '/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i',
-            $domain
-        );
+        $url = $this->get('TARTEAUCITRON_PRIVACY_URL');
+        return $this->looksLikeHttpsUrl($url) ? $url : '';
+    }
+
+    public function tarteaucitronConfigured(): bool
+    {
+        return $this->tarteaucitronPrivacyUrl() !== '';
+    }
+
+    /**
+     * URL du script coeur tarteaucitron.js (CDN officiel par défaut,
+     * auto-hébergement possible). Une URL invalide ou non HTTPS est
+     * neutralisée au profit de la valeur par défaut.
+     */
+    public function tarteaucitronScriptUrl(): string
+    {
+        $url = $this->get('TARTEAUCITRON_SCRIPT_URL', self::DEFAULT_TARTEAUCITRON_SCRIPT_URL);
+        return $this->looksLikeHttpsUrl($url) ? $url : self::DEFAULT_TARTEAUCITRON_SCRIPT_URL;
     }
 
     private function looksLikeHttpsUrl(string $url): bool

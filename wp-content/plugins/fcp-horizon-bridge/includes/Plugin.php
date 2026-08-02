@@ -46,10 +46,10 @@ final class Plugin
         add_action('init', [$this, 'registerAssets']);
         add_shortcode('fcp_enquiry_form', [$this, 'renderEnquiryForm']);
 
-        // Consentement (Didomi) : sitewide, indépendant du shortcode ci-dessus.
+        // Consentement (tarteaucitron.js) : sitewide, indépendant du shortcode ci-dessus.
         (new Consent($this->config))->register();
 
-        // Analytics (Plausible) : gated par le consentement, sitewide.
+        // Analytics (GoatCounter) : gated par le consentement, sitewide.
         (new Analytics($this->config))->register();
 
         // Rétention IP : purge quotidienne (12 mois glissants).

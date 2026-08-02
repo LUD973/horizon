@@ -12,7 +12,7 @@
     var form = document.getElementById('fcp-enquiry-form');
     if (!form) { return; }
 
-    // --- Analytics (Plausible, gated par consentement) ---
+    // --- Analytics (GoatCounter, gated par consentement) ---
     // Défensif : jamais bloquant pour le parcours de demande, même si
     // fcpAnalytics est absent (script non chargé, bloqueur, etc.).
     function fcpTrack(key, name, properties) {

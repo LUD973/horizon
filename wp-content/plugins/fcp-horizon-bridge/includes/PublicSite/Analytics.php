@@ -6,15 +6,12 @@ namespace FCP\Horizon\PublicSite;
 use FCP\Horizon\Support\Config;
 
 /**
- * Intégration Plausible — présentation uniquement.
+ * Intégration GoatCounter — présentation uniquement.
  *
- * N'enqueue JAMAIS le script Plausible lui-même côté PHP (ce serait le
+ * N'enqueue JAMAIS le script GoatCounter lui-même côté PHP (ce serait le
  * télécharger avant tout consentement). Le script réel est injecté
  * dynamiquement par assets/js/analytics.js, uniquement après confirmation du
- * consentement analytics via window.fcpConsent (façade du lot Didomi).
- *
- * Nouveau fichier (plutôt que d'étendre Consent.php) : le lot Didomi validé
- * n'est pas modifié par cette classe.
+ * consentement analytics via window.fcpConsent (façade du lot consentement).
  */
 final class Analytics
 {
@@ -38,9 +35,9 @@ final class Analytics
         );
 
         wp_localize_script('fcp-analytics', 'fcpAnalyticsConfig', [
-            'configured' => $this->config->plausibleConfigured(),
-            'domain'     => $this->config->plausibleDomain(),
-            'scriptUrl'  => $this->config->plausibleScriptUrl(),
+            'configured' => $this->config->goatcounterConfigured(),
+            'endpoint'   => $this->config->goatcounterEndpoint(),
+            'scriptUrl'  => $this->config->goatcounterScriptUrl(),
         ]);
 
         wp_enqueue_script('fcp-analytics');

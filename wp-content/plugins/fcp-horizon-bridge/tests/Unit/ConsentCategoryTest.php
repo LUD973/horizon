@@ -16,17 +16,17 @@ final class ConsentCategoryTest extends TestCase
         self::assertFalse(ConsentCategory::isValid('bidon'));
     }
 
-    public function testOnlyAnalyticsAndMarketingAreDidomiManaged(): void
+    public function testOnlyAnalyticsAndMarketingAreCmpManaged(): void
     {
-        self::assertFalse(ConsentCategory::isDidomiManaged(ConsentCategory::FUNCTIONAL));
-        self::assertTrue(ConsentCategory::isDidomiManaged(ConsentCategory::ANALYTICS));
-        self::assertTrue(ConsentCategory::isDidomiManaged(ConsentCategory::MARKETING));
+        self::assertFalse(ConsentCategory::isCmpManaged(ConsentCategory::FUNCTIONAL));
+        self::assertTrue(ConsentCategory::isCmpManaged(ConsentCategory::ANALYTICS));
+        self::assertTrue(ConsentCategory::isCmpManaged(ConsentCategory::MARKETING));
     }
 
-    public function testFunctionalIsNeverSentToDidomiApi(): void
+    public function testFunctionalIsNeverSentToCmp(): void
     {
         // Garde-fou explicite : « functional » ne doit jamais figurer dans la
-        // liste des catégories gérées par Didomi (règle 5 du GO Didomi).
-        self::assertNotContains(ConsentCategory::FUNCTIONAL, ConsentCategory::DIDOMI_MANAGED);
+        // liste des catégories gérées par le CMP (tarteaucitron.js).
+        self::assertNotContains(ConsentCategory::FUNCTIONAL, ConsentCategory::CMP_MANAGED);
     }
 }

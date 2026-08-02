@@ -6,15 +6,19 @@ namespace FCP\Horizon\PublicSite;
 use FCP\Horizon\Support\Config;
 
 /**
- * Intégration du consentement (Didomi) — présentation uniquement.
+ * Intégration du consentement (tarteaucitron.js) — présentation uniquement.
  *
- * N'imprime QUE le snippet officiel Didomi tel que configuré (aucune
- * reconstruction, aucun identifiant fictif). Sans configuration, rien n'est
- * imprimé ni chargé : le site reste pleinement fonctionnel.
+ * N'imprime que le chargement du script officiel (CDN par défaut, jamais
+ * reconstruit) et n'appelle que des points d'intégration publics et
+ * documentés (`tarteaucitron.services`, `tarteaucitron.job`,
+ * `tarteaucitron.init()`) — cette classe ne réimplémente aucun moteur de
+ * chargement/bannière. Sans configuration (aucun lien de politique de
+ * confidentialité renseigné), rien n'est imprimé ni chargé : le site reste
+ * pleinement fonctionnel.
  *
- * L'activation conditionnelle des scripts soumis à consentement (ex. futur
- * Plausible) relève du mécanisme NATIF Didomi (cf. docs/CONSENT_DIDOMI.md) —
- * cette classe ne réimplémente aucun moteur de chargement.
+ * L'enregistrement des services gated (analytics, marketing) et l'appel
+ * `tarteaucitron.init()` sont faits côté JS (`assets/js/consent.js`), qui
+ * seul construit les options à partir de la configuration serveur.
  */
 final class Consent
 {
@@ -31,25 +35,21 @@ final class Consent
         add_action('wp_enqueue_scripts', [$this, 'enqueue']);
     }
 
-    /** Imprime le snippet officiel Didomi, tel quel, au plus haut de <head>. */
+    /** Charge le script coeur tarteaucitron.js, tel quel, au plus haut de <head>. */
     public function printSdkLoader(): void
     {
         if (self::$printed) {
             return;
         }
 
-        $embed = $this->config->didomiSdkEmbed();
-        if ($embed === '') {
+        if (!$this->config->tarteaucitronConfigured()) {
             return; // Aucune configuration : rien n'est chargé, aucune bannière.
         }
 
         self::$printed = true;
 
-        // Configuration de confiance (jamais alimentée par une entrée
-        // utilisateur), donc imprimée sans échappement — c'est du balisage
-        // <script> fourni par Didomi, pas une donnée à assainir. Ne doit
-        // jamais être committé avec une valeur réelle (voir .env.example).
-        echo "\n" . $embed . "\n";
+        $scriptUrl = $this->config->tarteaucitronScriptUrl();
+        echo "\n" . '<script src="' . esc_url($scriptUrl) . '"></script>' . "\n";
     }
 
     public function enqueue(): void
@@ -63,10 +63,8 @@ final class Consent
         );
 
         wp_localize_script('fcp-consent', 'fcpConsentConfig', [
-            'configured'       => $this->config->didomiConfigured(),
-            'purposeAnalytics' => $this->config->didomiPurposeAnalytics(),
-            'purposeMarketing' => $this->config->didomiPurposeMarketing(),
-            'vendorPlausible'  => $this->config->didomiVendorPlausible(),
+            'configured' => $this->config->tarteaucitronConfigured(),
+            'privacyUrl' => $this->config->tarteaucitronPrivacyUrl(),
         ]);
 
         wp_enqueue_script('fcp-consent');

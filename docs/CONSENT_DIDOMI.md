@@ -1,3 +1,8 @@
+> ⚠️ **Historique — remplacé en Semaine 6.** Didomi a été remplacé par
+> **tarteaucitron.js** (voir `docs/CONSENT_TARTEAUCITRON.md`). Ce document est
+> conservé comme trace de l'implémentation d'origine (Semaine 5), le code
+> Didomi n'existe plus dans le plugin.
+
 # Consentement (Didomi) — Documentation technique
 
 ## Ce qui est automatisé par le plugin

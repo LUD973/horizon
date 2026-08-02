@@ -1,14 +1,15 @@
 /**
  * Façade analytics Horizon — window.fcpAnalytics.
  *
- * N'interroge JAMAIS directement le SDK Didomi : la seule source de vérité du
- * consentement est window.fcpConsent (façade du lot Didomi). Ne réimplémente
- * aucun moteur de chargement Plausible — utilise leur shim officiel
- * (window.plausible / .q) qui tolère un script pas encore chargé.
+ * N'interroge JAMAIS directement le CMP (tarteaucitron.js) : la seule source
+ * de vérité du consentement est window.fcpConsent (façade du lot
+ * consentement). N'utilise que la fonction publique et documentée de
+ * GoatCounter (window.goatcounter.count()) — aucun moteur de comptage
+ * maison.
  *
  * Comportements garantis :
- *   - Sans PLAUSIBLE_DOMAIN configuré : aucun script injecté, track() est un
- *     no-op silencieux (jamais même mis en file).
+ *   - Sans GOATCOUNTER_ENDPOINT configuré : aucun script injecté, track() est
+ *     un no-op silencieux (jamais même mis en file).
  *   - Sans consentement analytics : AUCUNE requête réseau. Les événements de
  *     formulaire sont mis en file (bornée, mémoire uniquement, jamais
  *     persistée) en attendant un premier octroi.
@@ -16,7 +17,7 @@
  *     chargé) : plus aucun nouvel envoi ; la file en cours est invalidée
  *     (vidée) ; les événements produits pendant la fenêtre de retrait sont
  *     abandonnés — jamais rejoués automatiquement à une ré-acceptation dans
- *     la même page (cf. docs/ANALYTICS_PLAUSIBLE.md).
+ *     la même page (cf. docs/ANALYTICS_GOATCOUNTER.md).
  *   - Échec réseau/bloqueur : aucune exception visible, aucune nouvelle
  *     tentative automatique dans la page (évite une boucle infinie).
  */
@@ -29,7 +30,7 @@
 
     var cfg = window.fcpAnalyticsConfig || {};
     var configured = cfg.configured === true;
-    var domain = typeof cfg.domain === 'string' ? cfg.domain : '';
+    var endpoint = typeof cfg.endpoint === 'string' ? cfg.endpoint : '';
     var scriptUrl = typeof cfg.scriptUrl === 'string' ? cfg.scriptUrl : '';
 
     var MAX_QUEUE = 20; // file bornée : évite toute accumulation illimitée
@@ -42,6 +43,11 @@
 
     // États du script : not_started -> loading -> loaded | failed.
     var scriptState = 'not_started';
+
+    // Appels en attente du chargement effectif du script GoatCounter (fenêtre
+    // transitoire uniquement, entre l'injection et le onload) — GoatCounter,
+    // contrairement à Plausible, n'a pas de file d'attente intégrée.
+    var pendingCounts = [];
 
     function hasConsent() {
         return !!(window.fcpConsent
@@ -62,6 +68,14 @@
         }
     }
 
+    function flushPendingCounts() {
+        var items = pendingCounts;
+        pendingCounts = [];
+        items.forEach(function (vars) {
+            try { window.goatcounter.count(vars); } catch (e) { /* jamais bloquant */ }
+        });
+    }
+
     function ensureScriptLoaded() {
         if (scriptState === 'loading' || scriptState === 'loaded') {
             return;
@@ -78,36 +92,42 @@
 
         scriptState = 'loading';
 
-        // Shim officiel Plausible : tolère un script pas encore chargé en
-        // mettant les appels en file interne (window.plausible.q).
-        window.plausible = window.plausible || function () {
-            (window.plausible.q = window.plausible.q || []).push(arguments);
-        };
-
         try {
             var script = document.createElement('script');
-            script.defer = true;
-            script.setAttribute('data-domain', domain);
+            script.async = true;
+            script.setAttribute('data-goatcounter', endpoint);
             script.src = scriptUrl;
-            script.onload = function () { scriptState = 'loaded'; };
-            script.onerror = function () { scriptState = 'failed'; };
+            script.onload = function () { scriptState = 'loaded'; flushPendingCounts(); };
+            script.onerror = function () { scriptState = 'failed'; pendingCounts = []; };
             (document.head || document.documentElement).appendChild(script);
         } catch (e) {
             scriptState = 'failed'; // aucune exception visible
         }
     }
 
+    /** Construit les variables GoatCounter (modèle path/title, pas de sac de propriétés générique). */
+    function buildVars(name, properties) {
+        var path = name;
+        var keys = properties ? Object.keys(properties) : [];
+        if (keys.length > 0) {
+            path += '?' + keys.map(function (k) {
+                return encodeURIComponent(k) + '=' + encodeURIComponent(String(properties[k]));
+            }).join('&');
+        }
+        return { path: path, title: name, event: true };
+    }
+
     function sendNow(name, properties) {
         try {
             ensureScriptLoaded();
-            if (typeof window.plausible !== 'function') {
-                return;
+            var vars = buildVars(name, properties);
+            if (scriptState === 'loaded' && window.goatcounter && typeof window.goatcounter.count === 'function') {
+                window.goatcounter.count(vars);
+            } else if (scriptState === 'loading') {
+                pendingCounts.push(vars); // rejoué au onload, jamais après un échec
             }
-            if (properties && Object.keys(properties).length > 0) {
-                window.plausible(name, { props: properties });
-            } else {
-                window.plausible(name);
-            }
+            // scriptState === 'failed' : abandon silencieux, cohérent avec
+            // l'absence de relance automatique.
         } catch (e) {
             /* jamais d'exception visible ; formulaire non affecté */
         }
@@ -146,7 +166,7 @@
     };
 
     if (!configured) {
-        return; // rien d'autre à faire : jamais de SDK Didomi interrogé ici, jamais de script injecté
+        return; // rien d'autre à faire : jamais de CMP interrogé ici, jamais de script injecté
     }
 
     if (window.fcpConsent && typeof window.fcpConsent.onChange === 'function') {

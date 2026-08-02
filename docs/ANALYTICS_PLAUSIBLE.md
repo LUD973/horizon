@@ -1,3 +1,8 @@
+> ⚠️ **Historique — remplacé en Semaine 6.** Plausible a été remplacé par
+> **GoatCounter** (voir `docs/ANALYTICS_GOATCOUNTER.md`). Ce document est
+> conservé comme trace de l'implémentation d'origine (Semaine 5), le code
+> Plausible n'existe plus dans le plugin.
+
 # Analytics (Plausible) — Documentation technique
 
 ## Ce qui est automatisé par le plugin

@@ -2,6 +2,33 @@
 
 Toutes les évolutions notables du plugin et du socle Horizon.
 
+## [0.8.0] — Semaine 6 (migration vers des solutions gratuites — consentement/analytics)
+### Changé
+- **Consentement** : Didomi → **tarteaucitron.js** (open source, gratuit,
+  auto-hébergeable). Façade `window.fcpConsent` gardée **strictement
+  identique** (`hasConsent`/`onChange`/`openPreferences`) — aucun appelant
+  (`form.js`, `analytics.js`) n'a eu besoin d'être modifié pour cette
+  raison. Intégration uniquement via les points officiels documentés
+  (`tarteaucitron.services`, `tarteaucitron.job`, `tarteaucitron.init()`,
+  `tarteaucitron.userInterface.openPanel()`).
+- **Analytics** : Plausible → **GoatCounter** (gratuit en faible volume,
+  aucun serveur à gérer). Façade `window.fcpAnalytics` gardée strictement
+  identique (file bornée/dédupliquée). Utilise uniquement
+  `window.goatcounter.count()` ; une petite file d'attente locale gère la
+  fenêtre de chargement du script (absente chez GoatCounter, contrairement
+  au shim `window.plausible.q`).
+- `Config` : `DIDOMI_*`/`PLAUSIBLE_*` remplacés par `TARTEAUCITRON_PRIVACY_URL`/
+  `TARTEAUCITRON_SCRIPT_URL` et `GOATCOUNTER_ENDPOINT`/`GOATCOUNTER_SCRIPT_URL`.
+- `ConsentCategory::isDidomiManaged()` → `isCmpManaged()` (renommage neutre,
+  logique inchangée).
+- Nouvelle documentation : `docs/CONSENT_TARTEAUCITRON.md`,
+  `docs/ANALYTICS_GOATCOUNTER.md`. Les docs Didomi/Plausible d'origine sont
+  conservées comme historique (marquées comme remplacées).
+### Garantie
+- Aucune modification de `Communication`/Brevo, des consentements métier
+  Horizon (`contacts.consent_marketing`), ni du formulaire lui-même.
+- 59 tests / 153 assertions — 0 régression.
+
 ## [0.7.3] — Semaine 5 (correctif recette — `hidden` neutralisé par le thème)
 ### Corrigé
 - **A2 (suite)** : le correctif 0.7.2 positionnait correctement l'attribut
