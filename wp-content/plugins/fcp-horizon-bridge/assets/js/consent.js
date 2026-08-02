@@ -34,7 +34,9 @@
     }
 
     var cfg = window.fcpConsentConfig || {};
-    var configured = cfg.configured === true;
+    // wp_localize_script() convertit toujours les valeurs en chaînes
+    // ('1'/'' pour un booléen PHP) : on accepte les deux représentations.
+    var configured = cfg.configured === true || cfg.configured === '1';
     var listeners = [];
     var state = { functional: true, analytics: false, marketing: false };
 

@@ -2,6 +2,18 @@
 
 Toutes les évolutions notables du plugin et du socle Horizon.
 
+## [0.8.1] — Semaine 6 (correctif recette — `wp_localize_script` stringifie les booléens)
+### Corrigé
+- Recette staging du lot 0.8.0 : `fcpConsentConfig.configured` /
+  `fcpAnalyticsConfig.configured` sont reçus comme la **chaîne** `'1'`/`''`
+  côté navigateur (`wp_localize_script()` convertit toujours ses valeurs en
+  texte — comportement WordPress standard), alors que `consent.js`/
+  `analytics.js` comparaient strictement à `true`. Le CMP ne s'initialisait
+  donc jamais malgré une configuration correcte. Comparaison élargie pour
+  accepter `true` et `'1'`.
+### Garantie
+- Aucune autre modification — 59 tests / 153 assertions, 0 régression.
+
 ## [0.8.0] — Semaine 6 (migration vers des solutions gratuites — consentement/analytics)
 ### Changé
 - **Consentement** : Didomi → **tarteaucitron.js** (open source, gratuit,
