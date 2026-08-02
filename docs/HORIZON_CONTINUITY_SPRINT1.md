@@ -5,12 +5,30 @@
 
 ## Repère Git
 - **Branche active** : `claude/fcp-execution-phase-bwtydk`
-- **Dernier commit** : `0f4b1e8` — fix(ux) v0.7.3 (correctifs recette S5)
-- **Version plugin** : **v0.7.3** — **Semaine 5 officiellement close, GO Release Candidate Sprint 1**
+- **Dernier commit** : `08bb619` — fix(consent,analytics) v0.8.1
+- **Version plugin** : **v0.8.1**
+- **Tag publié** : `v0.7.3-rc1` (Release Candidate Sprint 1, clôture Semaine 5)
 - **État Git** : propre, poussé sur `origin/claude/fcp-execution-phase-bwtydk`
-- **Tag conseillé** : `v0.7.3-rc1` (non créé automatiquement — à valider explicitement)
 - **Mono-dépôt** : `wp-content/themes/fcp-child`, `wp-content/plugins/fcp-horizon-bridge`,
   `supabase/migrations`, `docs/`.
+
+## Semaine 6 — Migration vers des solutions gratuites (consentement/analytics)
+- **A5 résolue** : Didomi → **tarteaucitron.js**, Plausible → **GoatCounter**
+  (v0.8.0, correctif v0.8.1). Façades JS `window.fcpConsent`/`window.fcpAnalytics`
+  strictement inchangées côté forme publique — aucun appelant modifié.
+- **Bug découvert et corrigé en recette (v0.8.1)** : `wp_localize_script()`
+  convertit les booléens PHP en chaînes (`true` → `'1'`) — les comparaisons
+  strictes `=== true` échouaient silencieusement. Élargi pour accepter les
+  deux représentations. **Point de vigilance pour tout futur `wp_localize_script`
+  avec des booléens.**
+- **Validé en staging** (visiteur anonyme) : bandeau affiché, refus →
+  `hasConsent('analytics')` = `false` ; acceptation → `true`, script GoatCounter
+  chargé (200), visite reçue côté tableau de bord GoatCounter.
+- Config à renseigner : `TARTEAUCITRON_PRIVACY_URL`, `GOATCOUNTER_ENDPOINT`
+  (déjà en place sur ce staging).
+- Docs : `docs/CONSENT_TARTEAUCITRON.md`, `docs/ANALYTICS_GOATCOUNTER.md`.
+  Anciennes docs Didomi/Plausible conservées comme historique (marquées
+  remplacées).
 
 ## Environnements
 - **Staging** : `staging.frenchclassprestige.com` (Infomaniak, WordPress + Divi),
@@ -187,26 +205,27 @@ recette :
   visuellement par le thème sur les `<section>` → corrigé v0.7.2 + v0.7.3,
   vérifié.
 
-Deux réserves **Mineures** restent ouvertes, sans impact bloquant :
-- **A5** : configuration Didomi/Plausible absente sur ce staging (action
-  serveur, `wp-config.php` — hors code). **Décision (Semaine 6) : reportée
-  sciemment** — Didomi (gratuit en petit volume) et Plausible (payant, hors
-  version auto-hébergée) représentent un choix commercial, pas un blocage
-  technique. Le comportement de repli (deny-by-default, aucune erreur) reste
-  la garantie en vigueur tant que la décision n'est pas prise.
+Une réserve **Mineure** reste ouverte, sans impact bloquant :
 - Défilement automatique manquant sur le bouton « Modifier » (cosmétique).
 
-**Décision : ✅ GO Release Candidate Sprint 1 — version v0.7.3.**
+**A5** (config Didomi/Plausible absente) a été **résolue en Semaine 6** par
+migration vers tarteaucitron.js/GoatCounter (gratuits) — voir section
+dédiée ci-dessus. Validée en staging (bandeau, refus/acceptation,
+chargement GoatCounter, réception de données).
+
+**Décision : ✅ GO Release Candidate Sprint 1 — version v0.7.3** (tag
+`v0.7.3-rc1` publié). La migration consentement/analytics (v0.8.0/0.8.1)
+est un lot Semaine 6 postérieur à cette décision, sans remise en cause.
 
 ## Reste du Sprint 1 (Semaine 5–6)
 - **Semaine 5** : ~~Didomi~~ ✅ ~~Plausible~~ ✅ ~~UX/accessibilité (C1–C4)~~ ✅
   ~~Recette staging~~ ✅ — **close**.
-- **Semaine 6** : stabilisation, performance, non-régression, documentation
-  d'exploitation, restauration config Didomi/Plausible (A5), préparation de
-  la Release Candidate finale. Détail : voir plan dédié communiqué en fin de
-  session S5.
+- **Semaine 6** : ~~migration tarteaucitron.js/GoatCounter (A5)~~ ✅ —
+  restant : stabilisation, performance, documentation d'exploitation
+  (`docs/EXPLOITATION.md` créé), préparation de la Release Candidate finale.
 
 ## Prochaine action exacte
-**Semaine 6, A5 reportée** (décision commerciale, cf. ci-dessus) : passer
-directement à la stabilisation / vérification performance / documentation
-d'exploitation, avant la Release Candidate finale du Sprint 1.
+Poursuivre la Semaine 6 : stabilisation/performance (contrôles déjà
+favorables, cf. plus haut), puis préparation de la Release Candidate finale
+du Sprint 1. Décision sur les template-parts inertes toujours différée
+après la RC.
