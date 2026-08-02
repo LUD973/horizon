@@ -205,8 +205,9 @@ recette :
   visuellement par le thème sur les `<section>` → corrigé v0.7.2 + v0.7.3,
   vérifié.
 
-Une réserve **Mineure** reste ouverte, sans impact bloquant :
-- Défilement automatique manquant sur le bouton « Modifier » (cosmétique).
+Le défilement automatique manquant sur le bouton « Modifier » (cosmétique)
+est accepté tel quel — **clos sans correction**, jugé non prioritaire par
+le porteur du projet.
 
 **A5** (config Didomi/Plausible absente) a été **résolue en Semaine 6** par
 migration vers tarteaucitron.js/GoatCounter (gratuits) — voir section
