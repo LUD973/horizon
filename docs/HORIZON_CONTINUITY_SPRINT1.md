@@ -5,14 +5,36 @@
 
 ## Repère Git
 - **Branche active** : `claude/fcp-execution-phase-bwtydk`
-- **Dernier commit** : `34df7af` — chore(theme) clôture Sprint 1 (template-parts inertes supprimés)
-- **Version plugin** : **v0.8.1** (inchangée — ce lot ne touche que le thème)
+- **Dernier commit** : `6c2b84e` — docs audit final template-parts
+- **Version plugin** : **v0.8.1**
 - **Version thème `fcp-child`** : **v0.2.0**
-- **Tags publiés** : `v0.7.3-rc1` (clôture Semaine 5), `v1.0.0-rc1` (RC finale
-  initiale, avant audit template-parts)
+- **Tags publiés** : `v0.7.3-rc1` (clôture Semaine 5), `v1.0.0-rc1` (RC avant
+  audit template-parts), `v1.0.0-rc2` (RC après audit/nettoyage), **`v1.0.0`**
+  (version stable finale — GO Production)
 - **État Git** : propre, poussé sur `origin/claude/fcp-execution-phase-bwtydk`
 - **Mono-dépôt** : `wp-content/themes/fcp-child`, `wp-content/plugins/fcp-horizon-bridge`,
   `supabase/migrations`, `docs/`.
+
+## 🚀 Sprint 1 — DÉPLOYÉ EN PRODUCTION
+- **Supabase production** : projet **"Horizon"** (Europe de l'Ouest), migrations
+  001 à 005 appliquées (RLS activée sur les 9 tables — un oubli de RLS sur
+  `enquiry_reference_counters` dans le script d'origine a été corrigé au passage
+  via l'assistant Supabase, à reporter aussi sur le script du dépôt/staging).
+- **Plugin `fcp-horizon-bridge` v0.8.1** activé sur `frenchclassprestige.com`.
+- **Thème** : décision prise de **garder le thème de production existant**
+  (pas d'activation de `fcp-child`) — le plugin fonctionne de façon autonome
+  grâce aux valeurs de repli CSS ; seule une finition mineure (contour de
+  focus sitewide) est ainsi non appliquée hors du formulaire lui-même.
+- **Page live** : `https://www.frenchclassprestige.com/688-2/` (shortcode
+  `[fcp_enquiry_form]` via un module Texte Divi).
+- **Test de bout en bout réussi en production** : référence réelle générée
+  `FCP-2026-000001` (donnée de test, à nettoyer dans le futur back-office),
+  confirmation affichée, lien WhatsApp fonctionnel, aucune erreur JS (hors
+  extension navigateur).
+- **Non configuré à ce stade en production** (par choix, sans impact
+  fonctionnel — comportements de repli garantis) : Brevo (emails),
+  tarteaucitron.js (consentement), GoatCounter (analytics). À activer plus
+  tard, au même titre que sur staging (`docs/EXPLOITATION.md`).
 
 ## Clôture Sprint 1 — Audit final des template-parts (Semaine 6)
 Décision appliquée (voir aussi `docs/UX_ACCESSIBILITY_S5.md` section 4) :

@@ -227,9 +227,10 @@ create index if not exists audit_logs_created_idx
 -- => Seule la clé service_role (serveur / plugin) peut lire/écrire.
 --    Les policies fines par rôle Horizon seront ajoutées à l'activation de l'auth.
 -- -----------------------------------------------------------------------------
-alter table public.contacts        enable row level security;
-alter table public.organizations   enable row level security;
-alter table public.enquiries       enable row level security;
-alter table public.enquiry_details enable row level security;
-alter table public.communications  enable row level security;
-alter table public.audit_logs      enable row level security;
+alter table public.contacts                    enable row level security;
+alter table public.organizations               enable row level security;
+alter table public.enquiries                   enable row level security;
+alter table public.enquiry_details             enable row level security;
+alter table public.communications              enable row level security;
+alter table public.audit_logs                  enable row level security;
+alter table public.enquiry_reference_counters  enable row level security;
