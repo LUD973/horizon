@@ -6,8 +6,13 @@ namespace FCP\Horizon\Support;
 /**
  * Journalisation sobre : aucun secret, aucune donnée personnelle superflue.
  *
- * Les clés sensibles connues sont masquées avant écriture. En production,
- * n'écrit que si WP_DEBUG_LOG est actif.
+ * Les clés sensibles connues sont masquées avant écriture (récursivement),
+ * sur la base du NOM de la clé — une valeur secrète transmise sous un nom
+ * absent de SENSITIVE_KEYS ne serait pas masquée.
+ *
+ * N'écrit que si la constante WP_DEBUG est définie ET vraie. La destination
+ * réelle du message dépend ensuite de la configuration PHP/WordPress
+ * (`error_log`, donc `WP_DEBUG_LOG` le cas échéant).
  */
 final class Logger
 {

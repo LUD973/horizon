@@ -2,6 +2,45 @@
 
 Toutes les évolutions notables du plugin et du socle Horizon.
 
+## [1.0.1] — Remise en cohérence (documentation, environnement, script de migration)
+
+> **Aucune modification applicative.** Le code exécuté (plugin **v0.8.1**,
+> thème **v0.2.0**) est **inchangé** par rapport à `v1.0.0` : aucun
+> comportement, aucune signature, aucune requête modifiés. **Aucune nouvelle
+> migration** n'est introduite — le script `001` existant est corrigé pour les
+> futurs déploiements ; les bases déjà en service ne nécessitent aucune action.
+
+### Corrigé
+- **`supabase/migrations/001_initial_schema.sql`** *(correctif déjà présent
+  depuis le commit `6d565fa`, antérieur à cette entrée)* : ajout de
+  `alter table public.enquiry_reference_counters enable row level security;`,
+  omis à l'origine alors que l'en-tête du script annonçait « RLS activée sur
+  toutes les tables ». **La production était déjà conforme** (RLS activée lors
+  du déploiement via l'assistant Supabase) ; le correctif garantit qu'un
+  **redéploiement depuis le dépôt** reproduise le même état. Le tag `v1.0.0`
+  ne contenait pas cette ligne, d'où la présente version.
+- **`.env.example`** : retrait de 7 variables devenues obsolètes en v0.8.0
+  (`DIDOMI_SDK_EMBED`, `DIDOMI_NOTICE_ID`, `DIDOMI_PURPOSE_ANALYTICS`,
+  `DIDOMI_PURPOSE_MARKETING`, `DIDOMI_VENDOR_PLAUSIBLE`, `PLAUSIBLE_DOMAIN`,
+  `PLAUSIBLE_SCRIPT_URL`) et ajout des 4 variables réellement consommées mais
+  absentes du modèle (`TARTEAUCITRON_PRIVACY_URL`, `TARTEAUCITRON_SCRIPT_URL`,
+  `GOATCOUNTER_ENDPOINT`, `GOATCOUNTER_SCRIPT_URL`). Un environnement
+  configuré depuis l'ancien modèle aurait eu consentement et analytics
+  inopérants. `BREVO_WHATSAPP_SENDER` conservée en réservé commenté.
+- **`docs/HORIZON_CONTINUITY_SPRINT1.md`** : 10 tables (et non 9), RLS 10/10,
+  59 tests (et non 56), repère de commit actualisé, correction RLS signalée
+  comme déjà reportée dans le dépôt, écart `v1.0.0` documenté, Sprint 1
+  explicitement clôturé avec passage au Sprint 2.
+- **Commentaires de code uniquement** (aucun changement de comportement) :
+  `Support/Logger.php` — le commentaire annonçait `WP_DEBUG_LOG` alors que le
+  code teste `WP_DEBUG` ; `Support/RateLimiter.php` — le commentaire annonçait
+  une « fenêtre glissante » alors que l'implémentation est une fenêtre fixe
+  ancrée sur la dernière requête autorisée.
+
+### Garantie
+- 59 tests / 153 assertions — inchangés, 0 régression.
+- Aucun fichier applicatif modifié hors commentaires.
+
 ## [0.8.1] — Semaine 6 (correctif recette — `wp_localize_script` stringifie les booléens)
 ### Corrigé
 - Recette staging du lot 0.8.0 : `fcpConsentConfig.configured` /

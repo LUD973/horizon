@@ -5,21 +5,31 @@
 
 ## Repère Git
 - **Branche active** : `claude/fcp-execution-phase-bwtydk`
-- **Dernier commit** : `6c2b84e` — docs audit final template-parts
+- **Dernier commit avant remise en cohérence v1.0.1** : `6d565fa` — docs+fix
+  clôture Sprint 1 (déploiement production validé)
 - **Version plugin** : **v0.8.1**
 - **Version thème `fcp-child`** : **v0.2.0**
 - **Tags publiés** : `v0.7.3-rc1` (clôture Semaine 5), `v1.0.0-rc1` (RC avant
   audit template-parts), `v1.0.0-rc2` (RC après audit/nettoyage), **`v1.0.0`**
   (version stable finale — GO Production)
+- ⚠️ **Écart connu sur `v1.0.0`** : ce tag pointe sur `6c2b84e` et **ne contient
+  pas** la correction RLS de `enquiry_reference_counters` (arrivée en `6d565fa`).
+  Le **code du plugin y est strictement identique** (v0.8.1) : seul le script
+  `001_initial_schema.sql` diffère. Un redéploiement de base **depuis le tag**
+  recréerait une table sans RLS. Traité par `v1.0.1` (sans déplacer `v1.0.0`).
 - **État Git** : propre, poussé sur `origin/claude/fcp-execution-phase-bwtydk`
 - **Mono-dépôt** : `wp-content/themes/fcp-child`, `wp-content/plugins/fcp-horizon-bridge`,
   `supabase/migrations`, `docs/`.
 
 ## 🚀 Sprint 1 — DÉPLOYÉ EN PRODUCTION
 - **Supabase production** : projet **"Horizon"** (Europe de l'Ouest), migrations
-  001 à 005 appliquées (RLS activée sur les 9 tables — un oubli de RLS sur
-  `enquiry_reference_counters` dans le script d'origine a été corrigé au passage
-  via l'assistant Supabase, à reporter aussi sur le script du dépôt/staging).
+  001 à 005 appliquées → **10 tables**, **RLS activée sur les 10** (comptage
+  vérifié sur les migrations et sur le Table Editor production).
+  Un oubli de RLS sur `enquiry_reference_counters` dans le script d'origine a
+  été corrigé en production via l'assistant Supabase, puis **reporté dans le
+  dépôt** (`001_initial_schema.sql`, commit `6d565fa`) — ✅ fait.
+  ⚠️ **Staging non revérifié** : la RLS sur `enquiry_reference_counters` n'y a
+  pas été rejouée à ce jour (contrôle externe à effectuer, lecture seule).
 - **Plugin `fcp-horizon-bridge` v0.8.1** activé sur `frenchclassprestige.com`.
 - **Thème** : décision prise de **garder le thème de production existant**
   (pas d'activation de `fcp-child`) — le plugin fonctionne de façon autonome
@@ -65,10 +75,16 @@ verts (non concernés).
   remplacées).
 
 ## Environnements
-- **Staging** : `staging.frenchclassprestige.com` (Infomaniak, WordPress + Divi),
-  séparé de la production. Production non touchée.
-- **Supabase** : projet **Frankfurt** « projet staging » (8 tables + `enquiry_notes`
-  + `communication_messages`). Clé `service_role` (JWT legacy) via `wp-config.php`.
+Deux environnements **strictement séparés**, chacun avec son propre projet
+Supabase.
+
+- **Staging** : `staging.frenchclassprestige.com` (Infomaniak, WordPress + Divi).
+  Supabase : projet **Frankfurt** « projet staging » — **10 tables** attendues
+  (7 par `001`, +1 par `002`, +1 par `004`, +1 par `005`). Clé `service_role`
+  (JWT legacy) via `wp-config.php`. ⚠️ RLS de `enquiry_reference_counters` non
+  rejouée (voir plus haut).
+- **Production** : `frenchclassprestige.com`. Supabase : projet **« Horizon »**
+  (Europe de l'Ouest) — **10 tables**, RLS 10/10 vérifiée.
 
 ## Fonctionnalités livrées (Semaines 1 → 4)
 - **S1–S2** : plugin, API v1 (`/health`, `/form-token`, `POST /enquiries`,
@@ -179,10 +195,10 @@ verts (non concernés).
   (< 4,5:1 texte courant / < 3:1 grand texte pour C5).
 
 ## Tests
-- **56 tests / 153 assertions** (unitaires + intégration hors ligne, double
-  Supabase + double provider + Didomi + Plausible + rendu FormRenderer).
-  **0 régression** sur les 54 précédents ni sur Communication/Brevo/Didomi/
-  Plausible. Exécution : `vendor/bin/phpunit`.
+- **59 tests / 153 assertions**, 100 % verts (unitaires + intégration hors
+  ligne, double Supabase `FakeSupabase` + double provider + consentement +
+  analytics + rendu `FormRenderer`). **0 régression** sur l'ensemble du
+  Sprint 1. Exécution : `vendor/bin/phpunit`.
 
 ## Documentation déjà créée
 - `16_IMPLEMENTATION_PLAN_SOLO.md`, `README.md`, `CHANGELOG.md`
@@ -252,15 +268,25 @@ chargement GoatCounter, réception de données).
 `v0.7.3-rc1` publié). La migration consentement/analytics (v0.8.0/0.8.1)
 est un lot Semaine 6 postérieur à cette décision, sans remise en cause.
 
-## Reste du Sprint 1 (Semaine 5–6)
+## Reste du Sprint 1 (Semaine 5–6) — TERMINÉ
 - **Semaine 5** : ~~Didomi~~ ✅ ~~Plausible~~ ✅ ~~UX/accessibilité (C1–C4)~~ ✅
   ~~Recette staging~~ ✅ — **close**.
-- **Semaine 6** : ~~migration tarteaucitron.js/GoatCounter (A5)~~ ✅ —
-  restant : stabilisation, performance, documentation d'exploitation
-  (`docs/EXPLOITATION.md` créé), préparation de la Release Candidate finale.
+- **Semaine 6** : ~~migration tarteaucitron.js/GoatCounter (A5)~~ ✅
+  ~~stabilisation~~ ✅ ~~performance~~ ✅ ~~documentation d'exploitation~~ ✅
+  ~~audit et nettoyage des template-parts~~ ✅ ~~Release Candidate finale~~ ✅
+  ~~déploiement production~~ ✅ — **close**.
 
-## Prochaine action exacte
-Poursuivre la Semaine 6 : stabilisation/performance (contrôles déjà
-favorables, cf. plus haut), puis préparation de la Release Candidate finale
-du Sprint 1. Décision sur les template-parts inertes toujours différée
-après la RC.
+## ✅ SPRINT 1 CLÔTURÉ
+Version stable **`v1.0.0`**, déployée et validée en production le 03/08/2026.
+Aucune réserve bloquante ou majeure ouverte.
+
+**La suite est pilotée par le Sprint 2** (back-office et traitement
+commercial) : voir `docs/HORIZON_CONTINUITY_SPRINT2.md` dès sa création.
+
+Éléments transmis au Sprint 2 :
+- Décision différée : sort de la donnée de test `FCP-2026-000001`.
+- Services optionnels non configurés en production (Brevo, tarteaucitron.js,
+  GoatCounter) — volontaire, repli garanti, procédure dans
+  `docs/EXPLOITATION.md`.
+- Contrôle externe à effectuer : RLS de `enquiry_reference_counters` sur
+  staging (lecture seule).
