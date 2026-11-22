@@ -895,19 +895,35 @@ function Instance(def, root) {
       var v = VALS[el.name];
       if ((v == null || v === '') && MAP[el.name] && VALS[MAP[el.name]]) v = VALS[el.name] = VALS[MAP[el.name]];
       if (v == null) return;
-      if (el.type === 'checkbox') el.checked = !!v; else if (el.value !== v) el.value = v;
+      if (el.type === 'checkbox') el.checked = !!v; else if (el.value !== v && el !== document.activeElement) el.value = v;
     });
     root.querySelectorAll('select[value]').forEach(function (el) { el.value = el.getAttribute('value'); });
   }
+  function syncAttrs(x, y) {
+    var i, a;
+    for (i = x.attributes.length - 1; i >= 0; i--) { a = x.attributes[i].name; if (!y.hasAttribute(a)) x.removeAttribute(a); }
+    for (i = 0; i < y.attributes.length; i++) { a = y.attributes[i]; if (x.getAttribute(a.name) !== a.value) x.setAttribute(a.name, a.value); }
+  }
+  function morphKids(a, b) {
+    var bk = [].slice.call(b.childNodes), ak = [].slice.call(a.childNodes), i;
+    for (i = 0; i < bk.length; i++) {
+      var x = ak[i], y = bk[i];
+      if (!x) { a.appendChild(y); continue; }
+      if (x.nodeType !== y.nodeType || x.nodeName !== y.nodeName) { a.replaceChild(y, x); continue; }
+      if (x.nodeType !== 1) { if (x.nodeValue !== y.nodeValue) x.nodeValue = y.nodeValue; continue; }
+      syncAttrs(x, y);
+      if (x.nodeName === 'TEXTAREA') continue;
+      morphKids(x, y);
+    }
+    for (i = ak.length - 1; i >= bk.length; i--) a.removeChild(ak[i]);
+  }
   function paint() {
     capture();
-    var ae = document.activeElement, focusName = ae && root.contains(ae) && ae.name, selS = focusName && ae.selectionStart;
-    var sc = [].slice.call(root.querySelectorAll('*')).filter(function (e) { return e.scrollTop; }).map(function (e) { return [e.className + '|' + e.getAttribute('style'), e.scrollTop]; });
     H = [];
-    root.innerHTML = render(def.tpl, comp.renderVals());
-    sc.forEach(function (p) { [].slice.call(root.querySelectorAll('*')).forEach(function (e) { if (e.className + '|' + e.getAttribute('style') === p[0]) e.scrollTop = p[1]; }); });
+    var html = render(def.tpl, comp.renderVals());
+    if (!root.firstChild) root.innerHTML = html;
+    else { var tmp = document.createElement('div'); tmp.innerHTML = html; morphKids(root, tmp); }
     restore();
-    if (focusName) { var f = root.querySelector('[name="' + focusName + '"]'); if (f) { f.focus({ preventScroll: true }); try { if (selS != null) f.setSelectionRange(selS, selS); } catch (e) {} } }
   }
   var Base = function (p) { this.props = p || {}; this.state = {}; };
   Base.prototype.setState = function (p) { var n = typeof p === 'function' ? p(this.state) : p; for (var k in n) this.state[k] = n[k]; paint(); };
