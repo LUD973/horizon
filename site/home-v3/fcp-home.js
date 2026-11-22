@@ -946,7 +946,7 @@ function Instance(def, root) {
 var API_ROOT = '/wp-json/fcp/v1/';
 function uuid() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'fcp-' + Date.now() + '-' + Math.random().toString(16).slice(2); }
 function getToken() {
-  return fetch(API_ROOT + 'form-token', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) { TOKEN = j.token; return TOKEN; });
+  return fetch(API_ROOT + 'form-token?_=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) { TOKEN = j.token; return TOKEN; });
 }
 function today() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
 var API = {
@@ -1024,7 +1024,9 @@ var WRAP_CSS =
   '#fcp-home p,#fcp-home h1,#fcp-home h2,#fcp-home h3{padding-bottom:0}' +
   '#fcp-home button{cursor:pointer}' +
   'html.fcp-home-mobile,html.fcp-home-mobile body{overflow:hidden;height:100%}' +
-  'html.fcp-home-mobile #fcp-home{position:fixed;inset:0;z-index:99990;background:#0B1F3A;height:100vh;height:100dvh}' +
+  'html.fcp-home-mobile #fcp-home{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;z-index:99990;background:#0B1F3A;-webkit-transform:none;transform:none}' +
+  'html.fcp-home-mobile body>*:not(#fcp-home){display:none!important}' +
+  'html.fcp-home-mobile body{margin:0!important;padding:0!important;background:#0B1F3A!important}' +
   'html.fcp-home-mobile .joinchat,html.fcp-home-mobile .gt_switcher_wrapper,html.fcp-home-mobile #wpadminbar{display:none!important}' +
   'body.fcp-home-page .main_title,body.fcp-home-page #sidebar{display:none!important}' +
   'body.fcp-home-page #main-content .container{width:100%!important;max-width:none!important;padding:0!important}' +
@@ -1035,9 +1037,23 @@ var WRAP_CSS =
 
 function addStyle(id, css) { var s = document.getElementById(id); if (!s) { s = document.createElement('style'); s.id = id; document.head.appendChild(s); } s.textContent = css; }
 
+function showError(root, e) {
+  try {
+    root.removeAttribute('style');
+    root.innerHTML = '<div style="min-height:100vh;background:#0B1F3A;color:#F6F1E7;padding:48px 24px;font:16px/1.5 Georgia,serif">'
+      + '<p style="font-size:26px;margin:0 0 12px">French Class Prestige</p>'
+      + '<p style="margin:0 0 24px">La page n’a pas pu s’afficher sur cet appareil.</p>'
+      + '<a href="' + WA + '" style="display:inline-block;padding:14px 22px;background:#C6A15B;color:#0B1F3A;text-decoration:none;font:500 13px/1 sans-serif;letter-spacing:2px;text-transform:uppercase">Écrire sur WhatsApp</a>'
+      + '<p style="margin:32px 0 0;font:12px/1.4 monospace;color:rgba(246,241,231,.6)">' + str(String((e && (e.stack || e.message)) || e)).slice(0, 400) + '</p></div>';
+  } catch (x) {}
+}
+
 function boot() {
   var root = document.getElementById('fcp-home');
   if (!root) { root = document.createElement('div'); root.id = 'fcp-home'; document.body.insertBefore(root, document.body.firstChild); }
+  root.removeAttribute('style');
+  var home = document.createComment('fcp-home');
+  root.parentNode.insertBefore(home, root);
   document.body.classList.add('fcp-home-page');
   if (!document.querySelector('link[data-fcp-fonts]')) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = FONTS; l.setAttribute('data-fcp-fonts', ''); document.head.appendChild(l); }
   addStyle('fcp-home-wrap', WRAP_CSS);
@@ -1047,13 +1063,16 @@ function boot() {
     var k = pick(); if (k === cur) return;
     if (inst) inst.destroy();
     cur = k;
+    if (k === 'm') { if (root.parentNode !== document.body) document.body.appendChild(root); }
+    else if (home.parentNode && root.previousSibling !== home) home.parentNode.insertBefore(root, home.nextSibling);
     document.documentElement.classList.toggle('fcp-home-mobile', k === 'm');
     addStyle('fcp-home-layout', LAYOUTS[k].css.replace(/(^|\})\s*body\s*\{margin:0\}/g, '$1'));
-    inst = new Instance(LAYOUTS[k], root);
+    try { inst = new Instance(LAYOUTS[k], root); } catch (e) { inst = null; showError(root, e); if (window.console) console.error(e); }
   }
   mount();
   var t; window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(mount, 150); });
 }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+function safeBoot() { try { boot(); } catch (e) { var r = document.getElementById('fcp-home'); if (r) showError(r, e); } }
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', safeBoot); else safeBoot();
 
 })();
