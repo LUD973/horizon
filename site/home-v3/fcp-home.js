@@ -309,8 +309,8 @@ class Component extends DCLogic {
       bkWa: S.bkWa || 'https://wa.me/33656898611', bkWaOpen: () => FCP_API.waOpened(S.bkRef),
       pjSend: () => FCP_API.sendProject(this),
       heroPassed: S.heroPassed,
-      useLoc: () => this.setState({ loc: true }),
-      locLabel: S.loc ? 'Position détectée · Paris 8e' : 'Utiliser ma position',
+      useLoc: () => FCP_API.locate(this),
+      locLabel: S.loc === 'busy' ? 'Localisation en cours…' : S.loc === 'err' ? 'Position indisponible · saisissez l’adresse' : S.loc ? 'Position détectée' + (S.locShort ? ' · ' + S.locShort : '') : 'Utiliser ma position',
       heroVisible: !S.heroPassed,
       onScroll: (e) => { const p = e.currentTarget.scrollTop > 560; if (p !== this.state.heroPassed) this.setState({ heroPassed: p }); },
       dxTabs: [{ k: 'world', label: 'Le monde' }, { k: 'paris', label: 'Depuis Paris' }, { k: 'city', label: 'City tours' }].map(t => ({ label: t.label, sel: S.dx === t.k ? 'true' : 'false', bg: S.dx === t.k ? '#0B1F3A' : 'transparent', fg: S.dx === t.k ? '#F6F1E7' : '#0B1F3A', pick: () => this.setState({ dx: t.k }) })),
@@ -675,8 +675,8 @@ class Component extends DCLogic {
       bkWa: S.bkWa || 'https://wa.me/33656898611', bkWaOpen: () => FCP_API.waOpened(S.bkRef),
       pjSend: () => FCP_API.sendProject(this),
       heroPassed: S.heroPassed,
-      useLoc: () => this.setState({ loc: true }),
-      locLabel: S.loc ? 'Position détectée · Paris 8e' : 'Utiliser ma position',
+      useLoc: () => FCP_API.locate(this),
+      locLabel: S.loc === 'busy' ? 'Localisation en cours…' : S.loc === 'err' ? 'Position indisponible · saisissez l’adresse' : S.loc ? 'Position détectée' + (S.locShort ? ' · ' + S.locShort : '') : 'Utiliser ma position',
       heroVisible: !S.heroPassed,
       onScroll: (e) => { const p = e.currentTarget.scrollTop > 560; if (p !== this.state.heroPassed) this.setState({ heroPassed: p }); },
       dxTabs: [{ k: 'world', label: 'Le monde' }, { k: 'paris', label: 'Depuis Paris' }, { k: 'city', label: 'City tours' }].map(t => ({ label: t.label, sel: S.dx === t.k ? 'true' : 'false', bg: S.dx === t.k ? '#0B1F3A' : 'transparent', fg: S.dx === t.k ? '#F6F1E7' : '#0B1F3A', pick: () => this.setState({ dx: t.k }) })),
@@ -1030,18 +1030,176 @@ var API = {
   }
 };
 
+/* ---------- Address suggestions (Géoplateforme IGN + lieux de la Maison) ---------- */
+var GEO = 'https://data.geopf.fr/geocodage/';
+var PLACES = [
+  ['Aéroport Paris-Charles de Gaulle (CDG)', 'Roissy · terminaux 1, 2 et 3', 'cdg roissy charles de gaulle aeroport airport t1 t2 t3 2a 2b 2c 2d 2e 2f 2g'],
+  ['Aéroport Paris-Orly (ORY)', 'Orly · terminaux 1 à 4', 'orly aeroport airport ory'],
+  ['Aéroport Paris-Le Bourget (LBG)', 'Aviation d’affaires · Le Bourget', 'bourget aeroport aviation affaires jet prive lbg'],
+  ['Aéroport Paris-Beauvais (BVA)', 'Beauvais-Tillé', 'beauvais aeroport bva tille'],
+  ['Gare du Nord', 'Paris 10e · Eurostar, Thalys', 'gare du nord eurostar thalys'],
+  ['Gare de Lyon', 'Paris 12e · TGV Sud-Est', 'gare de lyon tgv'],
+  ['Gare Montparnasse', 'Paris 15e · TGV Atlantique', 'gare montparnasse tgv'],
+  ['Gare de l’Est', 'Paris 10e · TGV Est', 'gare de l est tgv'],
+  ['Gare Saint-Lazare', 'Paris 8e', 'gare saint lazare st'],
+  ['Gare d’Austerlitz', 'Paris 13e', 'gare d austerlitz'],
+  ['Gare de Marne-la-Vallée – Chessy', 'Disneyland Paris', 'marne la vallee chessy gare disney disneyland'],
+  ['Disneyland Paris', 'Chessy · Parcs et hôtels', 'disneyland disney parc chessy'],
+  ['Château de Versailles', 'Versailles', 'chateau de versailles palais'],
+  ['Hôtel Plaza Athénée', '25 avenue Montaigne, Paris 8e', 'hotel plaza athenee palace montaigne'],
+  ['Four Seasons Hotel George V', '31 avenue George V, Paris 8e', 'hotel four seasons george v palace'],
+  ['Le Bristol Paris', '112 rue du Faubourg Saint-Honoré, Paris 8e', 'hotel le bristol palace faubourg saint honore'],
+  ['Hôtel de Crillon', '10 place de la Concorde, Paris 8e', 'hotel crillon rosewood palace concorde'],
+  ['Ritz Paris', '15 place Vendôme, Paris 1er', 'hotel ritz palace vendome'],
+  ['Le Meurice', '228 rue de Rivoli, Paris 1er', 'hotel le meurice palace rivoli'],
+  ['The Peninsula Paris', '19 avenue Kléber, Paris 16e', 'hotel peninsula palace kleber'],
+  ['Shangri-La Paris', '10 avenue d’Iéna, Paris 16e', 'hotel shangri la palace iena'],
+  ['Mandarin Oriental Paris', '251 rue Saint-Honoré, Paris 1er', 'hotel mandarin oriental palace saint honore'],
+  ['Cheval Blanc Paris', '8 quai du Louvre, Paris 1er', 'hotel cheval blanc palace samaritaine louvre'],
+  ['Le Royal Monceau', '37 avenue Hoche, Paris 8e', 'hotel royal monceau raffles hoche'],
+  ['Park Hyatt Paris-Vendôme', '5 rue de la Paix, Paris 2e', 'hotel park hyatt vendome paix'],
+  ['Hôtel Lutetia', '45 boulevard Raspail, Paris 6e', 'hotel lutetia raspail'],
+  ['Palais des Congrès de Paris', 'Porte Maillot, Paris 17e', 'palais des congres porte maillot'],
+  ['Paris Expo Porte de Versailles', 'Paris 15e', 'paris expo porte de versailles salon'],
+  ['Paris Nord Villepinte', 'Villepinte · Parc des expositions', 'villepinte parc des expositions salon']
+];
+var AC_FIELDS = { origin: 1, destination: 1, qfrom: 1 };
+var acBox = null, acInput = null, acItems = [], acSel = -1, acTimer = null, acSeq = 0;
+function norm(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
+function acEnsure() {
+  if (acBox) return acBox;
+  acBox = document.createElement('div');
+  acBox.id = 'fcp-ac';
+  acBox.setAttribute('role', 'listbox');
+  document.body.appendChild(acBox);
+  acBox.addEventListener('pointerdown', function (e) { e.preventDefault(); });
+  acBox.addEventListener('mousedown', function (e) { e.preventDefault(); });
+  acBox.addEventListener('click', function (e) { var r = e.target.closest('[data-i]'); if (r) acPick(+r.getAttribute('data-i')); });
+  return acBox;
+}
+function acHide() { if (acBox) { acBox.style.display = 'none'; acBox.innerHTML = ''; } acItems = []; acSel = -1; }
+function acPlace() {
+  if (!acBox || !acInput || acBox.style.display === 'none') return;
+  if (!document.contains(acInput)) { acHide(); return; }
+  var r = acInput.getBoundingClientRect(), vv = window.visualViewport, vh = vv ? vv.height + vv.offsetTop : window.innerHeight;
+  if (r.bottom < 0 || r.top > vh) { acBox.style.visibility = 'hidden'; return; }
+  acBox.style.visibility = 'visible';
+  var w = Math.max(r.width, 280), left = Math.min(r.left, window.innerWidth - w - 8);
+  var below = vh - r.bottom - 12, above = r.top - 12;
+  acBox.style.left = Math.max(8, left) + 'px';
+  acBox.style.width = Math.min(w, window.innerWidth - 16) + 'px';
+  if (below >= 180 || below >= above) { acBox.style.top = (r.bottom + 6) + 'px'; acBox.style.bottom = 'auto'; acBox.style.maxHeight = Math.max(140, Math.min(360, below)) + 'px'; }
+  else { acBox.style.top = 'auto'; acBox.style.bottom = (vh - r.top + 6) + 'px'; acBox.style.maxHeight = Math.min(360, above) + 'px'; }
+}
+function acRender(head) {
+  var box = acEnsure();
+  if (!acItems.length) { acHide(); return; }
+  var h = '', lastG = null;
+  acItems.forEach(function (it, i) {
+    if (it.g !== lastG) { h += '<div class="g">' + it.g + '</div>'; lastG = it.g; }
+    h += '<div class="o" role="option" data-i="' + i + '" aria-selected="' + (i === acSel) + '"><span class="ic">' + (it.ic || '') + '</span><span class="t"><b>' + str(it.t) + '</b><small>' + str(it.s || '') + '</small></span></div>';
+  });
+  box.innerHTML = h;
+  box.style.display = 'block';
+  acPlace();
+}
+var IC_PIN = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B08D4F" stroke-width="1.5"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
+var IC_STAR = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B08D4F" stroke-width="1.5"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>';
+function acQuery(q) {
+  var nq = norm(q), seq = ++acSeq, local = [];
+  var words = nq.split(' ').filter(Boolean);
+  PLACES.forEach(function (p) {
+    var hay = norm(p[0] + ' ' + p[1] + ' ' + p[2]);
+    if (!words.length || words.every(function (w) { return hay.indexOf(w) >= 0; })) local.push({ g: 'Lieux de la Maison', t: p[0], s: p[1], v: p[0] + (p[1] && p[1].indexOf('Paris') >= 0 && /\d/.test(p[1]) ? ' — ' + p[1] : ''), ic: IC_STAR });
+  });
+  local = local.slice(0, words.length ? 4 : 6);
+  acItems = local; acSel = -1; acRender();
+  if (nq.length < 3) return;
+  fetch(GEO + 'search?q=' + encodeURIComponent(q) + '&limit=6&autocomplete=1&lat=48.8566&lon=2.3522', { mode: 'cors' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (seq !== acSeq || !acInput) return;
+      var addr = (j.features || []).map(function (f) {
+        var p = f.properties || {};
+        var t = p.name || p.label, s = [p.postcode, p.city].filter(Boolean).join(' ');
+        if (p.type === 'municipality') s = p.context || s;
+        return { g: 'Adresses', t: t, s: s, v: p.label || t, ic: IC_PIN };
+      });
+      acItems = local.slice(0, 3).concat(addr); acSel = -1; acRender();
+    }).catch(function () {});
+}
+function acPick(i) {
+  var it = acItems[i]; if (!it || !acInput) return;
+  acInput.value = it.v;
+  VALS[acInput.name] = it.v;
+  acInput.dispatchEvent(new Event('input', { bubbles: true }));
+  acInput.dispatchEvent(new Event('change', { bubbles: true }));
+  acHide();
+  if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) acInput.blur();
+}
+function acInit() {
+  var st = document.createElement('style');
+  st.textContent = '#fcp-ac{position:fixed;z-index:100002;display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#FBF8F2;border:1px solid rgba(176,141,79,.35);border-radius:12px;box-shadow:0 18px 40px rgba(5,14,31,.28);font-family:Jost,system-ui,sans-serif;padding:6px 0;box-sizing:border-box}'
+    + '#fcp-ac .g{font-size:10px;letter-spacing:2.2px;text-transform:uppercase;color:#B08D4F;padding:10px 16px 4px}'
+    + '#fcp-ac .o{display:flex;align-items:flex-start;gap:12px;padding:10px 16px;cursor:pointer;color:#0B1F3A}'
+    + '#fcp-ac .o[aria-selected=true],#fcp-ac .o:hover{background:rgba(198,161,91,.14)}'
+    + '#fcp-ac .ic{flex:0 0 16px;padding-top:2px}#fcp-ac .t{display:flex;flex-direction:column;gap:2px;min-width:0}'
+    + '#fcp-ac b{font-weight:400;font-size:15px;line-height:1.3}#fcp-ac small{font-size:12px;font-weight:300;color:rgba(11,31,58,.62);line-height:1.3}';
+  document.head.appendChild(st);
+  function field(t) { return t && t.name && AC_FIELDS[t.name] && t.closest && t.closest('#fcp-home') ? t : null; }
+  document.addEventListener('focusin', function (e) {
+    var t = field(e.target); if (!t) return;
+    acInput = t; t.setAttribute('autocomplete', 'off');
+    acQuery(t.value || '');
+  });
+  document.addEventListener('input', function (e) {
+    var t = field(e.target); if (!t || !e.isTrusted) return;
+    acInput = t; clearTimeout(acTimer);
+    var v = t.value; acTimer = setTimeout(function () { acQuery(v); }, 180);
+  });
+  document.addEventListener('focusout', function (e) { if (field(e.target)) setTimeout(function () { if (document.activeElement !== acInput) acHide(); }, 120); });
+  document.addEventListener('keydown', function (e) {
+    if (!acInput || e.target !== acInput || !acItems.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); acSel = (acSel + (e.key === 'ArrowDown' ? 1 : -1) + acItems.length) % acItems.length; acRender(); }
+    else if (e.key === 'Enter' && acSel >= 0) { e.preventDefault(); acPick(acSel); }
+    else if (e.key === 'Escape') acHide();
+  });
+  window.addEventListener('scroll', acPlace, true);
+  window.addEventListener('resize', acPlace);
+  if (window.visualViewport) { window.visualViewport.addEventListener('resize', acPlace); window.visualViewport.addEventListener('scroll', acPlace); }
+}
+
+function setField(n, v) { VALS[n] = v; var el = document.querySelector('#fcp-home [name="' + n + '"]'); if (el) el.value = v; }
+API.locate = function (comp) {
+  if (!navigator.geolocation) { comp.setState({ loc: 'err' }); return; }
+  comp.setState({ loc: 'busy' });
+  navigator.geolocation.getCurrentPosition(function (pos) {
+    var c = pos.coords;
+    fetch(GEO + 'reverse?lon=' + c.longitude + '&lat=' + c.latitude + '&limit=1', { mode: 'cors' }).then(function (r) { return r.json(); }).then(function (j) {
+      var p = ((j.features || [])[0] || {}).properties;
+      if (!p) throw 0;
+      setField('origin', p.label);
+      comp.setState({ loc: true, locShort: [p.postcode, p.city].filter(Boolean).join(' ') });
+    }).catch(function () {
+      setField('origin', 'Position GPS : ' + c.latitude.toFixed(5) + ', ' + c.longitude.toFixed(5));
+      comp.setState({ loc: true, locShort: '' });
+    });
+  }, function () { comp.setState({ loc: 'err' }); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+};
+
 /* ---------- Mount ---------- */
 var WRAP_CSS =
   '#fcp-home{width:100%;position:relative;font-size:16px;line-height:normal;font-weight:400;-webkit-font-smoothing:antialiased;text-align:left}' +
   '#fcp-home *,#fcp-home *:before,#fcp-home *:after{box-sizing:content-box}' +
   '#fcp-home ul,#fcp-home ol{padding:0;margin:0;list-style:none}' +
-  '#fcp-home input,#fcp-home select,#fcp-home textarea{box-shadow:none;outline-offset:2px}' +
+  '#fcp-home input,#fcp-home select,#fcp-home textarea{box-shadow:none}' +
+  '#fcp-home input:focus,#fcp-home select:focus,#fcp-home textarea:focus{outline:none;box-shadow:0 1px 0 #C6A15B}' +
   '#fcp-home img{max-width:none}' +
   '#fcp-home p,#fcp-home h1,#fcp-home h2,#fcp-home h3{padding-bottom:0}' +
   '#fcp-home button{cursor:pointer}' +
   'html.fcp-home-mobile,html.fcp-home-mobile body{overflow:hidden;height:100%}' +
   'html.fcp-home-mobile #fcp-home{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;z-index:99990;background:#0B1F3A;-webkit-transform:none;transform:none}' +
-  'html.fcp-home-mobile body>*:not(#fcp-home){display:none!important}' +
+  'html.fcp-home-mobile body>*:not(#fcp-home):not(#fcp-ac){display:none!important}' +
   'html.fcp-home-mobile body{margin:0!important;padding:0!important;background:#0B1F3A!important}' +
   'html.fcp-home-mobile .joinchat,html.fcp-home-mobile .gt_switcher_wrapper,html.fcp-home-mobile #wpadminbar{display:none!important}' +
   'body.fcp-home-page .main_title,body.fcp-home-page #sidebar{display:none!important}' +
@@ -1073,6 +1231,7 @@ function boot() {
   document.body.classList.add('fcp-home-page');
   if (!document.querySelector('link[data-fcp-fonts]')) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = FONTS; l.setAttribute('data-fcp-fonts', ''); document.head.appendChild(l); }
   addStyle('fcp-home-wrap', WRAP_CSS);
+  try { acInit(); } catch (e) {}
   var cur = null, inst = null;
   function pick() { return window.innerWidth >= 1024 ? 'd' : 'm'; }
   function mount() {
