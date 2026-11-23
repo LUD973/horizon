@@ -129,8 +129,8 @@ function Instance(def, root) {
       return;
     }
     var t = ev.target.closest('[data-click]'); if (t && root.contains(t)) { if (t.tagName !== 'A' || t.getAttribute('href') === '#' || !t.getAttribute('href')) ev.preventDefault(); H[+t.dataset.click](ev); } };
-  this.onChange = function (ev) { var nm = ev.target.name; if (nm) VALS[nm] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; var t = ev.target.closest('[data-change]'); if (t) H[+t.dataset.change](ev); if (nm === 'origin' || nm === 'destination' || nm === 'qfrom') setTimeout(function () { API.detectRoute(comp); }, 0); };
-  this.onInput = function (ev) { if (ev.target.name) VALS[ev.target.name] = ev.target.value; if (ev.target.name === 'flight' || ev.target.name === 'ret_flight') comp.setState({ flT: Date.now() }); };
+  this.onChange = function (ev) { var nm = ev.target.name; if (nm) VALS[nm] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; var t = ev.target.closest('[data-change]'); if (t) H[+t.dataset.change](ev); if (nm === 'origin' || nm === 'destination' || nm === 'qfrom') setTimeout(function () { API.detectRoute(comp); }, 0); if (nm === 'origin' || nm === 'destination' || nm === 'date' || nm === 'flight') API.scheduleFlightCheck(comp); };
+  this.onInput = function (ev) { if (ev.target.name) VALS[ev.target.name] = ev.target.value; if (ev.target.name === 'flight' || ev.target.name === 'ret_flight') { comp.setState({ flT: Date.now() }); if (ev.target.name === 'flight') API.scheduleFlightCheck(comp); } };
   this.onScroll = function (ev) { var t = ev.target; if (t && t.dataset && t.dataset.scroll) H[+t.dataset.scroll]({ currentTarget: t, target: t }); };
   root.addEventListener('click', this.onClick);
   root.addEventListener('change', this.onChange);
@@ -195,9 +195,14 @@ var API = {
       range: k.tierEff || '', preferred_channel: 'whatsapp', message: lines.join('  •  ').slice(0, 1500),
       consent_processing: '1', consent_marketing: '', company_website: ''
     };
+    var ft = flightTarget();
+    if (ft && fl.code) { payload.flight_airport = ft.ap; payload.flight_dir = ft.dir; }
     comp.setState({ bkBusy: true, bkErr: '' });
     var key = S.bkKey || uuid(); comp.state.bkKey = key;
-    getToken().then(function (t) {
+    checkFlight(null).then(function (c) {
+      if (c && (c.status === 'mismatch' || c.status === 'not_found')) { var e = new Error(c.message); e.flight = true; throw e; }
+      return getToken();
+    }).then(function (t) {
       payload._fcp_nonce = t;
       return fetch(API_ROOT + 'enquiries', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body: JSON.stringify(payload) });
     }).then(function (res) { return res.json().then(function (j) { return { ok: res.ok, status: res.status, j: j }; }); })
@@ -210,7 +215,7 @@ var API = {
         } else {
           comp.setState({ bkBusy: false, bkErr: (o.j && o.j.message) || 'L’envoi n’a pas abouti. Réessayez, ou écrivez-nous sur WhatsApp.' });
         }
-      }).catch(function () { comp.setState({ bkBusy: false, bkErr: 'Connexion interrompue. Réessayez, ou écrivez-nous sur WhatsApp.' }); });
+      }).catch(function (e) { comp.setState({ bkBusy: false, bkErr: e && e.flight ? e.message : 'Connexion interrompue. Réessayez, ou écrivez-nous sur WhatsApp.' }); });
   },
   waOpened: function (ref) {
     if (!ref) return;
@@ -414,6 +419,36 @@ API.locate = function (comp) {
 
 /* ---------- Flight check ---------- */
 var AIRLINES = {AF:'Air France',KL:'KLM',LH:'Lufthansa',BA:'British Airways',U2:'easyJet',EC:'easyJet Europe',DS:'easyJet Suisse',FR:'Ryanair',VY:'Vueling',IB:'Iberia',UX:'Air Europa',AZ:'ITA Airways',LX:'Swiss',OS:'Austrian Airlines',SN:'Brussels Airlines',TP:'TAP Air Portugal',SK:'SAS',AY:'Finnair',EK:'Emirates',QR:'Qatar Airways',EY:'Etihad Airways',TK:'Turkish Airlines',PC:'Pegasus',XQ:'SunExpress',DL:'Delta Air Lines',AA:'American Airlines',UA:'United Airlines',AC:'Air Canada',TS:'Air Transat',WS:'WestJet',B6:'JetBlue',LA:'LATAM',AV:'Avianca',AM:'Aeroméxico',CM:'Copa Airlines',G3:'Gol',AD:'Azul',JL:'Japan Airlines',NH:'ANA',CX:'Cathay Pacific',SQ:'Singapore Airlines',KE:'Korean Air',OZ:'Asiana Airlines',CA:'Air China',MU:'China Eastern',CZ:'China Southern',HU:'Hainan Airlines',AI:'Air India','6E':'IndiGo',SV:'Saudia',MS:'EgyptAir',AT:'Royal Air Maroc','3O':'Air Arabia Maroc',TU:'Tunisair',BJ:'Nouvelair',AH:'Air Algérie',ET:'Ethiopian Airlines',KQ:'Kenya Airways',SA:'South African Airways',TO:'Transavia France',HV:'Transavia',DY:'Norwegian',D8:'Norwegian',W6:'Wizz Air',W4:'Wizz Air Malta',LO:'LOT Polish Airlines',A3:'Aegean Airlines',EI:'Aer Lingus',BT:'airBaltic',SS:'Corsair',TX:'Air Caraïbes',TN:'Air Tahiti Nui',UU:'Air Austral',BF:'French bee',XK:'Air Corsica',V7:'Volotea',QF:'Qantas',NZ:'Air New Zealand',VS:'Virgin Atlantic',LG:'Luxair',WY:'Oman Air',GF:'Gulf Air',KU:'Kuwait Airways',RJ:'Royal Jordanian',ME:'Middle East Airlines',LY:'El Al',VN:'Vietnam Airlines',TG:'Thai Airways',MH:'Malaysia Airlines',GA:'Garuda Indonesia',PR:'Philippine Airlines',OU:'Croatia Airlines',JU:'Air Serbia',RO:'Tarom',FB:'Bulgaria Air',DE:'Condor',EW:'Eurowings','4U':'Eurowings',KC:'Air Astana',HY:'Uzbekistan Airways',PS:'Ukraine International',J2:'Azerbaijan Airlines',ZI:'Aigle Azur',A5:'HOP!',YO:'Heli Air Monaco',BE:'Flybe',LS:'Jet2',MT:'Thomas Cook',BY:'TUI Airways',TB:'TUI fly',X3:'TUI fly',OR:'TUI fly Nederland',HF:'Air Côte d’Ivoire',KP:'ASKY',DT:'TAAG Angola',QC:'Camair-Co',SM:'Air Cairo',VT:'Air Tahiti',NF:'Air Vanuatu',SB:'Aircalin',OG:'Air Guilin',FI:'Icelandair',OK:'Czech Airlines',QS:'Smartwings',H4:'HiSky',FZ:'flydubai',G9:'Air Arabia',XY:'flynas',F3:'flyadeal',PK:'PIA',UL:'SriLankan Airlines',BG:'Biman',KM:'KM Malta Airlines',KX:'Cayman Airways',BW:'Caribbean Airlines',HA:'Hawaiian Airlines',AS:'Alaska Airlines',WN:'Southwest',NK:'Spirit',F9:'Frontier'};
+var FLC = { key: '', status: '', message: '', leg: null }, flTimer = null;
+var AP_IATA = { cdg: 'CDG', orly: 'ORY', lbg: 'LBG', bva: 'BVA' };
+function flightTarget() {
+  var ka = kindOf(FCPV('origin') || FCPV('qfrom') || ''), kb = kindOf(FCPV('destination') || '');
+  if (AP_IATA[ka]) return { ap: AP_IATA[ka], dir: 'arr' };
+  if (AP_IATA[kb]) return { ap: AP_IATA[kb], dir: 'dep' };
+  return null;
+}
+function flightKey() {
+  var f = String(FCPV('flight') || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), d = FCPV('date') || FCPV('qdate') || '', t = flightTarget();
+  if (!f || !d || !t || !/^([A-Z0-9]{2})(\d{1,4})[A-Z]?$/.test(f)) return null;
+  return { k: f + '|' + d + '|' + t.ap + '|' + t.dir, f: f, d: d, ap: t.ap, dir: t.dir };
+}
+function checkFlight(comp) {
+  var q = flightKey();
+  if (!q) { FLC = { key: '', status: '' }; return Promise.resolve(FLC); }
+  if (FLC.key === q.k && FLC.status && FLC.status !== 'pending') return Promise.resolve(FLC);
+  FLC = { key: q.k, status: 'pending', message: '', leg: null };
+  if (comp) comp.setState({ flT: Date.now() });
+  return fetch(API_ROOT + 'flight-check?flight=' + encodeURIComponent(q.f) + '&date=' + q.d + '&airport=' + q.ap + '&dir=' + q.dir, { credentials: 'same-origin', cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (FLC.key !== q.k) return FLC;
+      FLC = { key: q.k, status: j.status || 'unavailable', message: j.message || '', leg: j.leg || null, dir: q.dir };
+      if (FLC.status === 'ok' && q.dir === 'arr' && FLC.leg && FLC.leg.arr_time && !FCPV('time')) setField('time', FLC.leg.arr_time);
+      if (comp) comp.setState({ flT: Date.now() });
+      return FLC;
+    }).catch(function () { FLC = { key: q.k, status: 'unavailable', message: '' }; if (comp) comp.setState({ flT: Date.now() }); return FLC; });
+}
+API.scheduleFlightCheck = function (comp) { clearTimeout(flTimer); flTimer = setTimeout(function () { checkFlight(comp); }, 700); };
 API.flight = function (v) {
   var t = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!t) return { show: false, hide: true };
@@ -421,8 +456,18 @@ API.flight = function (v) {
   if (!m || !/[A-Z]/.test(m[1])) return { show: true, hide: false, color: '#9B2C2C', text: 'Format attendu : 2 caractères puis le numéro, par exemple AF 1234', url: '' };
   var al = AIRLINES[m[1]], code = m[1] + ' ' + m[2];
   var url = 'https://www.google.com/search?q=' + encodeURIComponent('vol ' + m[1] + m[2]);
-  return al ? { show: true, hide: false, color: '#2F5D3A', text: '✓ ' + al + ' · vol ' + code, url: url, al: al, code: code }
-            : { show: true, hide: false, color: '#9B5B1E', text: 'Compagnie « ' + m[1] + ' » non reconnue · vérifiez le numéro', url: url, code: code };
+  var base = al ? { show: true, hide: false, color: '#2F5D3A', text: '✓ ' + al + ' · vol ' + code, url: url, al: al, code: code }
+                : { show: true, hide: false, color: '#9B5B1E', text: 'Compagnie « ' + m[1] + ' » non reconnue · vérifiez le numéro', url: url, code: code };
+  var q = flightKey();
+  if (q && FLC.key === q.k) {
+    if (FLC.status === 'pending') { base.text = (al ? al + ' · vol ' + code : 'Vol ' + code) + ' · vérification en cours…'; base.color = 'rgba(11,31,58,.6)'; }
+    else if (FLC.status === 'ok' && FLC.leg) {
+      var L = FLC.leg;
+      base.text = '✓ ' + (L.airline || al || 'Vol') + ' · ' + code + ' · ' + L.from + ' → ' + L.to + (q.dir === 'arr' ? (L.arr_time ? ' · atterrissage ' + L.arr_time : '') : (L.dep_time ? ' · décollage ' + L.dep_time : ''));
+      base.color = '#2F5D3A'; base.verified = true;
+    } else if (FLC.status === 'mismatch' || FLC.status === 'not_found') { base.text = '✕ ' + FLC.message; base.color = '#9B2C2C'; base.blocked = true; }
+  }
+  return base;
 };
 
 /* ---------- Route detection from the two addresses ---------- */

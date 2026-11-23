@@ -12,6 +12,10 @@ use FCP\Horizon\Data\EnquiryRepository;
 use FCP\Horizon\Data\MessageRepository;
 use FCP\Horizon\Data\SupabaseClient;
 use FCP\Horizon\Data\SupabaseException;
+use FCP\Horizon\Data\Providers\AeroDataBox\AeroDataBoxClient;
+use FCP\Horizon\Domain\Flight\FlightLeg;
+use FCP\Horizon\Domain\Flight\FlightNumber;
+use FCP\Horizon\Domain\Flight\FlightVerifier;
 use FCP\Horizon\Domain\EnquiryValidator;
 use FCP\Horizon\Domain\PublicReference;
 use FCP\Horizon\Domain\ReceiptPresenter;
@@ -31,6 +35,7 @@ use WP_REST_Response;
  *   POST /enquiries                               (Idempotency-Key supporté)
  *   GET  /enquiries/{reference}/receipt           (données non sensibles)
  *   POST /enquiries/{reference}/whatsapp-opened
+ *   GET  /flight-check?flight=AF1234&date=YYYY-MM-DD&airport=CDG&dir=arr|dep
  */
 final class RestController
 {
@@ -66,6 +71,12 @@ final class RestController
         register_rest_route(self::NAMESPACE, '/enquiries/(?P<reference>FCP-\d{4}-\d{6})/receipt', [
             'methods'             => 'GET',
             'callback'            => [$this, 'receipt'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/flight-check', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'flightCheck'],
             'permission_callback' => '__return_true',
         ]);
 
@@ -137,6 +148,22 @@ final class RestController
         $limiter = new RateLimiter($this->config->rateLimitPerMinute());
         if (!$limiter->allow($ip)) {
             return new WP_Error('fcp_rate_limited', 'Trop de demandes, veuillez patienter une minute.', ['status' => 429]);
+        }
+
+        // 4b. Contrôle du vol : il doit arriver (ou partir) de l'aéroport exact du trajet.
+        $flightCheck = $this->checkFlightParams($params);
+        if ($flightCheck !== null && in_array($flightCheck['status'], [FlightVerifier::MISMATCH, FlightVerifier::NOT_FOUND], true)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'errors'  => ['flight_number' => $flightCheck['message']],
+            ], 422);
+        }
+        if ($flightCheck !== null && $flightCheck['status'] === FlightVerifier::UNAVAILABLE) {
+            $params['message'] = trim('[Vol à vérifier par la Maison] ' . (string) ($params['message'] ?? ''));
+        } elseif ($flightCheck !== null && $flightCheck['leg'] instanceof FlightLeg) {
+            $leg = $flightCheck['leg'];
+            $params['message'] = trim('[Vol vérifié : ' . $leg->depIata . ' → ' . $leg->arrIata
+                . ($leg->arrLocal !== '' ? ', arrivée ' . FlightLeg::hour($leg->arrLocal) : '') . '] ' . (string) ($params['message'] ?? ''));
         }
 
         // 5. Validation + normalisation serveur.
@@ -285,6 +312,64 @@ final class RestController
         $response = new WP_REST_Response(['success' => true, 'receipt' => ReceiptPresenter::present($row)], 200);
         $this->applyCorsHeader($response, $request);
         return $response;
+    }
+
+    /**
+     * Vérifie qu'un vol correspond à l'aéroport attendu (lecture seule, sans donnée personnelle).
+     */
+    public function flightCheck(WP_REST_Request $request)
+    {
+        if (($cors = $this->guardOrigin($request)) instanceof WP_Error) {
+            return $cors;
+        }
+        $limiter = new RateLimiter(max(20, $this->config->rateLimitPerMinute() * 4));
+        if (!$limiter->allow('flight_' . $this->clientIp())) {
+            return new WP_Error('fcp_rate_limited', 'Trop de requêtes, veuillez patienter.', ['status' => 429]);
+        }
+        $out = $this->checkFlightParams([
+            'flight_number'  => (string) $request->get_param('flight'),
+            'service_date'   => (string) $request->get_param('date'),
+            'flight_airport' => (string) $request->get_param('airport'),
+            'flight_dir'     => (string) $request->get_param('dir'),
+        ]);
+        if ($out === null) {
+            return new WP_Error('fcp_bad_flight', 'Numéro de vol, date ou aéroport invalide.', ['status' => 400]);
+        }
+        $leg = $out['leg'];
+        $payload = [
+            'status'  => $out['status'],
+            'message' => $out['message'],
+            'flight'  => $out['flight'],
+            'leg'     => $leg instanceof FlightLeg ? [
+                'from' => $leg->depIata, 'from_name' => $leg->depName,
+                'to' => $leg->arrIata, 'to_name' => $leg->arrName,
+                'dep_time' => FlightLeg::hour($leg->depLocal), 'arr_time' => FlightLeg::hour($leg->arrLocal),
+                'airline' => $leg->airlineName, 'state' => $leg->status,
+            ] : null,
+        ];
+        $response = new WP_REST_Response($payload, 200);
+        $response->header('Cache-Control', 'no-store');
+        $this->applyCorsHeader($response, $request);
+        return $response;
+    }
+
+    /**
+     * @param array<string,mixed> $params
+     * @return array{status:string,message:string,leg:?FlightLeg,flight:string}|null null = rien à contrôler.
+     */
+    private function checkFlightParams(array $params): ?array
+    {
+        $flight = FlightNumber::parse((string) ($params['flight_number'] ?? ''));
+        $airport = strtoupper(trim((string) ($params['flight_airport'] ?? '')));
+        $date = trim((string) ($params['service_date'] ?? ''));
+        $dir = (string) ($params['flight_dir'] ?? 'arr') === 'dep' ? 'dep' : 'arr';
+        if ($flight === null || !preg_match('/^[A-Z]{3}$/', $airport) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return null;
+        }
+        $legs = (new AeroDataBoxClient($this->config))->lookup($flight, $date);
+        $res = (new FlightVerifier())->verify($legs, $airport, $dir, $flight);
+        $res['flight'] = $flight->display();
+        return $res;
     }
 
     // --- Fabrique de dépendances (câblage couche Data ↔ Application) ---

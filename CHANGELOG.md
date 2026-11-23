@@ -2,6 +2,17 @@
 
 Toutes les évolutions notables du plugin et du socle Horizon.
 
+## [1.1.0] — Contrôle des numéros de vol (plugin v0.9.0)
+
+- Nouvelle route `GET /fcp/v1/flight-check?flight=&date=&airport=&dir=` : le vol doit
+  arriver (`dir=arr`) ou partir (`dir=dep`) de l'aéroport **exact** du trajet (CDG ≠ Orly ≠ Le Bourget).
+- `POST /enquiries` : si `flight_airport` est fourni, un vol qui ne correspond pas est refusé (422,
+  `errors.flight_number`) ; si le fournisseur est indisponible, la demande passe avec la mention
+  « [Vol à vérifier par la Maison] ».
+- Fournisseur : AeroDataBox (RapidAPI). Réglages wp-config : `AERODATABOX_API_KEY`
+  (obligatoire pour activer le contrôle), `AERODATABOX_HOST` (facultatif). Réponses en cache 30 min.
+- Tests unitaires : `FlightVerifierTest`.
+
 ## [1.0.1] — Remise en cohérence (documentation, environnement, script de migration)
 
 > **Aucune modification applicative.** Le code exécuté (plugin **v0.8.1**,
