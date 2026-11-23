@@ -453,7 +453,11 @@ API.flight = function (v) {
   var t = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!t) return { show: false, hide: true };
   var m = t.match(/^([A-Z0-9]{2})(\d{1,4})[A-Z]?$/);
-  if (!m || !/[A-Z]/.test(m[1])) return { show: true, hide: false, color: '#9B2C2C', text: 'Format attendu : 2 caractères puis le numéro, par exemple AF 1234', url: '' };
+  if (!m || !/[A-Z]/.test(m[1])) {
+    var tg = flightTarget();
+    if (tg && tg.ap === 'LBG' && /^[A-Z0-9-]{4,8}$/.test(String(v).toUpperCase().replace(/\s+/g, ''))) return { show: true, hide: false, color: 'rgba(11,31,58,.65)', text: 'Vol privé · immatriculation ' + String(v).toUpperCase().trim(), url: '' };
+    return { show: true, hide: false, color: '#9B2C2C', text: 'Format attendu : 2 caractères puis le numéro, par exemple AF 1234', url: '' };
+  }
   var al = AIRLINES[m[1]], code = m[1] + ' ' + m[2];
   var url = 'https://www.google.com/search?q=' + encodeURIComponent('vol ' + m[1] + m[2]);
   var base = al ? { show: true, hide: false, color: '#2F5D3A', text: '✓ ' + al + ' · vol ' + code, url: url, al: al, code: code }
