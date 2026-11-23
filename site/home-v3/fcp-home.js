@@ -71,7 +71,7 @@ class Component extends DCLogic {
     const madH = S.madH || 3, madD = S.madD || 2;
     const scale = (g, n) => ({ c: g.c * n, e: g.e * n, s: g.s * n, v: g.v * n });
     const offParis = isTr && S.bRoute !== 'ville' && S.bRoute !== 'cdgorly' && FCP_API.outsideParis();
-    const grid = isTr ? (S.bRoute === 'ville' ? ZONES[zone] : (offParis ? null : PRICES[S.bRoute])) : S.bDur === 'À l’heure' ? scale(HOURLY, madH) : S.bDur === 'Plusieurs jours' ? scale(PRICES['Journée'], madD) : PRICES[S.bDur];
+    const grid = isTr ? (S.bRoute === 'ville' ? (zone === 'hors' ? FCP_API.kmGrid(ZONES.grande) : ZONES[zone]) : (offParis ? FCP_API.kmGrid(PRICES[S.bRoute]) : PRICES[S.bRoute])) : S.bDur === 'À l’heure' ? scale(HOURLY, madH) : S.bDur === 'Plusieurs jours' ? scale(PRICES['Journée'], madD) : PRICES[S.bDur];
     const bigGroup = S.bPax === '8 et +';
     const bagS = S.bagS || 0, bagC = S.bagC || 0;
     const bagsOver = bagS > 2 || bagC > 2;
@@ -314,7 +314,7 @@ class Component extends DCLogic {
       pjSend: () => FCP_API.sendProject(this),
       fl: FCP_API.flight(FCPV('flight')),
       gMix, gBers, gBerSub, gBerTitle,
-      routeNote: S.routeAuto && S.bMode === 'transfer' ? 'Trajet reconnu : ' + ((ROUTE_DEF.find(r => r.k === S.bRoute) || {}).l || '') + (S.bRoute === 'ville' ? ' · ' + ({ paris: 'Paris', petite: 'Petite couronne', grande: 'Grande couronne', hors: 'Hors Île-de-France' })[S.bZone || 'paris'] : '') + (total ? ' · ' + fmt(total) : offParis ? ' · adresse hors Paris : tarif sur mesure, confirmé par la Maison' : '') : '',
+      routeNote: S.routeAuto && S.bMode === 'transfer' ? 'Trajet reconnu : ' + ((ROUTE_DEF.find(r => r.k === S.bRoute) || {}).l || '') + (S.bRoute === 'ville' ? ' · ' + ({ paris: 'Paris', petite: 'Petite couronne', grande: 'Grande couronne', hors: 'Hors Île-de-France' })[S.bZone || 'paris'] : '') + (total ? (FCP_API.kmInfo() && (offParis || zone === 'hors') ? ' · ' + FCP_API.kmInfo() : '') + ' · ' + fmt(total) : offParis ? ' · adresse hors Paris : choisissez l’adresse dans la liste pour obtenir le tarif' : '') : '',
       heroPassed: S.heroPassed,
       useLoc: () => FCP_API.locate(this),
       locLabel: S.loc === 'busy' ? 'Localisation en cours…' : S.loc === 'denied' ? 'Position bloquée par le navigateur · saisissez l’adresse' : S.loc === 'err' ? 'Position introuvable ici · saisissez l’adresse' : S.loc ? 'Position détectée' + (S.locShort ? ' · ' + S.locShort : '') : 'Utiliser ma position',
@@ -444,7 +444,7 @@ class Component extends DCLogic {
     const madH = S.madH || 3, madD = S.madD || 2;
     const scale = (g, n) => ({ c: g.c * n, e: g.e * n, s: g.s * n, v: g.v * n });
     const offParis = isTr && S.bRoute !== 'ville' && S.bRoute !== 'cdgorly' && FCP_API.outsideParis();
-    const grid = isTr ? (S.bRoute === 'ville' ? ZONES[zone] : (offParis ? null : PRICES[S.bRoute])) : S.bDur === 'À l’heure' ? scale(HOURLY, madH) : S.bDur === 'Plusieurs jours' ? scale(PRICES['Journée'], madD) : PRICES[S.bDur];
+    const grid = isTr ? (S.bRoute === 'ville' ? (zone === 'hors' ? FCP_API.kmGrid(ZONES.grande) : ZONES[zone]) : (offParis ? FCP_API.kmGrid(PRICES[S.bRoute]) : PRICES[S.bRoute])) : S.bDur === 'À l’heure' ? scale(HOURLY, madH) : S.bDur === 'Plusieurs jours' ? scale(PRICES['Journée'], madD) : PRICES[S.bDur];
     const bigGroup = S.bPax === '8 et +';
     const bagS = S.bagS || 0, bagC = S.bagC || 0;
     const bagsOver = bagS > 2 || bagC > 2;
@@ -687,7 +687,7 @@ class Component extends DCLogic {
       pjSend: () => FCP_API.sendProject(this),
       fl: FCP_API.flight(FCPV('flight')),
       gMix, gBers, gBerSub, gBerTitle,
-      routeNote: S.routeAuto && S.bMode === 'transfer' ? 'Trajet reconnu : ' + ((ROUTE_DEF.find(r => r.k === S.bRoute) || {}).l || '') + (S.bRoute === 'ville' ? ' · ' + ({ paris: 'Paris', petite: 'Petite couronne', grande: 'Grande couronne', hors: 'Hors Île-de-France' })[S.bZone || 'paris'] : '') + (total ? ' · ' + fmt(total) : offParis ? ' · adresse hors Paris : tarif sur mesure, confirmé par la Maison' : '') : '',
+      routeNote: S.routeAuto && S.bMode === 'transfer' ? 'Trajet reconnu : ' + ((ROUTE_DEF.find(r => r.k === S.bRoute) || {}).l || '') + (S.bRoute === 'ville' ? ' · ' + ({ paris: 'Paris', petite: 'Petite couronne', grande: 'Grande couronne', hors: 'Hors Île-de-France' })[S.bZone || 'paris'] : '') + (total ? (FCP_API.kmInfo() && (offParis || zone === 'hors') ? ' · ' + FCP_API.kmInfo() : '') + ' · ' + fmt(total) : offParis ? ' · adresse hors Paris : choisissez l’adresse dans la liste pour obtenir le tarif' : '') : '',
       heroPassed: S.heroPassed,
       useLoc: () => FCP_API.locate(this),
       locLabel: S.loc === 'busy' ? 'Localisation en cours…' : S.loc === 'denied' ? 'Position bloquée par le navigateur · saisissez l’adresse' : S.loc === 'err' ? 'Position introuvable ici · saisissez l’adresse' : S.loc ? 'Position détectée' + (S.locShort ? ' · ' + S.locShort : '') : 'Utiliser ma position',
@@ -952,14 +952,14 @@ function Instance(def, root) {
     }
     var t = ev.target.closest('[data-click]'); if (t && root.contains(t)) { if (t.tagName !== 'A' || t.getAttribute('href') === '#' || !t.getAttribute('href')) ev.preventDefault(); H[+t.dataset.click](ev); } };
   this.onChange = function (ev) { var nm = ev.target.name; if (nm) VALS[nm] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; var t = ev.target.closest('[data-change]'); if (t) H[+t.dataset.change](ev); if (nm === 'origin' || nm === 'destination' || nm === 'qfrom') setTimeout(function () { API.detectRoute(comp); comp.setState({ addrT: Date.now() }); }, 0); if (nm === 'origin' || nm === 'destination' || nm === 'date' || nm === 'flight') API.scheduleFlightCheck(comp); };
-  this.onInput = function (ev) { if (ev.target.name) VALS[ev.target.name] = ev.target.value; if (ev.target.name === 'flight' || ev.target.name === 'ret_flight') { comp.setState({ flT: Date.now() }); if (ev.target.name === 'flight') API.scheduleFlightCheck(comp); } };
+  this.onInput = function (ev) { if (ev.target.name) { VALS[ev.target.name] = ev.target.value; if (ev.isTrusted) VALS[ev.target.name + '_ll'] = null; } if (ev.target.name === 'flight' || ev.target.name === 'ret_flight') { comp.setState({ flT: Date.now() }); if (ev.target.name === 'flight') API.scheduleFlightCheck(comp); } };
   this.onScroll = function (ev) { var t = ev.target; if (t && t.dataset && t.dataset.scroll) H[+t.dataset.scroll]({ currentTarget: t, target: t }); };
   root.addEventListener('click', this.onClick);
   root.addEventListener('change', this.onChange);
   root.addEventListener('input', this.onInput);
   root.addEventListener('scroll', this.onScroll, true);
   comp = new Cls({});
-  this.comp = comp;
+  this.comp = comp; kmComp = comp;
   paint();
   if (comp.componentDidMount) comp.componentDidMount();
   this.destroy = function () {
@@ -1003,6 +1003,7 @@ var API = {
     var pax = k.bigGroup ? k.gPax : ({ '1 – 3': 3, '4 – 7': 7 })[S.bPax] || 1;
     var lines = (r.recap || []).map(function (x) { return x.k + ' : ' + x.v; });
     lines.push('Total indicatif : ' + (r.totalLabel || 'Tarif sur mesure'));
+    if (API.kmInfo()) lines.push('Distance estimée : ' + API.kmInfo() + ' (tarif au kilomètre)');
     var fl = API.flight(FCPV('flight'));
     if (fl.code) lines.push('Vol : ' + fl.code + (fl.al ? ' (' + fl.al + ')' : ' (compagnie non reconnue)') + ' · Suivi : ' + fl.url);
     var rf = API.flight(FCPV('ret_flight'));
@@ -1111,6 +1112,15 @@ var PLACES = [
   ['Paris Expo Porte de Versailles', 'Paris 15e', 'paris expo porte de versailles salon'],
   ['Paris Nord Villepinte', 'Villepinte · Parc des expositions', 'villepinte parc des expositions salon']
 ];
+var PLACE_LL = {
+  'Aéroport Paris-Charles de Gaulle (CDG)': [49.0097, 2.5479], 'Aéroport Paris-Orly (ORY)': [48.7262, 2.3652],
+  'Aéroport Paris-Le Bourget (LBG)': [48.9694, 2.4414], 'Aéroport Paris-Beauvais (BVA)': [49.4544, 2.1128],
+  'Gare du Nord': [48.8809, 2.3553], 'Gare de Lyon': [48.8443, 2.3744], 'Gare Montparnasse': [48.8412, 2.3203],
+  'Gare de l’Est': [48.8768, 2.3592], 'Gare Saint-Lazare': [48.8763, 2.3254], 'Gare d’Austerlitz': [48.8423, 2.3655],
+  'Gare de Marne-la-Vallée – Chessy': [48.8700, 2.7830], 'Disneyland Paris': [48.8722, 2.7758], 'Château de Versailles': [48.8049, 2.1204],
+  'Waldorf Astoria Versailles – Trianon Palace': [48.8090, 2.1188], 'Airelles Château de Versailles': [48.8035, 2.1235],
+  'Palais des Congrès de Paris': [48.8786, 2.2834], 'Paris Expo Porte de Versailles': [48.8320, 2.2875], 'Paris Nord Villepinte': [48.9705, 2.5150]
+};
 var AC_FIELDS = { origin: 1, destination: 1, qfrom: 1, addr: 1 };
 var acBox = null, acInput = null, acItems = [], acSel = -1, acTimer = null, acSeq = 0;
 function norm(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
@@ -1158,7 +1168,7 @@ function acQuery(q) {
   var words = nq.split(' ').filter(Boolean);
   PLACES.forEach(function (p) {
     var hay = norm(p[0] + ' ' + p[1] + ' ' + p[2]);
-    if (!words.length || words.every(function (w) { return hay.indexOf(w) >= 0; })) local.push({ g: 'Lieux de la Maison', t: p[0], s: p[1], v: p[0] + (p[1] && p[1].indexOf('Paris') >= 0 && /\d/.test(p[1]) ? ' — ' + p[1] : ''), ic: IC_STAR });
+    if (!words.length || words.every(function (w) { return hay.indexOf(w) >= 0; })) local.push({ g: 'Lieux de la Maison', t: p[0], s: p[1], v: p[0] + (p[1] && p[1].indexOf('Paris') >= 0 && /\d/.test(p[1]) ? ' — ' + p[1] : ''), ic: IC_STAR, ll: PLACE_LL[p[0]] || (/Paris \d/.test(p[1]) ? [48.8566, 2.3522] : null) });
   });
   local = local.slice(0, words.length ? 4 : 6);
   acItems = local; acSel = -1; acRender();
@@ -1179,7 +1189,7 @@ function acQuery(q) {
         var street = [p.housenumber, p.street].filter(Boolean).join(' ');
         var city = [p.postcode, p.city || p.town || p.village || p.county].filter(Boolean).join(' ');
         var sub = [street, city, p.country && p.country !== 'France' ? p.country : ''].filter(Boolean).join(', ');
-        return { g: 'Hôtels et lieux', t: p.name, s: sub, v: p.name + (sub ? ' — ' + sub : ''), ic: IC_STAR };
+        var gc = (f.geometry || {}).coordinates; return { g: 'Hôtels et lieux', t: p.name, s: sub, v: p.name + (sub ? ' — ' + sub : ''), ic: IC_STAR, ll: gc ? [gc[1], gc[0]] : null };
       });
       merge();
     }).catch(function () {});
@@ -1191,7 +1201,7 @@ function acQuery(q) {
         var p = f.properties || {};
         var t = p.name || p.label, s2 = [p.postcode, p.city].filter(Boolean).join(' ');
         if (p.type === 'municipality') s2 = p.context || s2;
-        return { g: 'Adresses', t: t, s: s2, v: p.label || t, ic: IC_PIN };
+        var gc = (f.geometry || {}).coordinates; return { g: 'Adresses', t: t, s: s2, v: p.label || t, ic: IC_PIN, ll: gc ? [gc[1], gc[0]] : null };
       });
       merge();
     }).catch(function () {});
@@ -1200,6 +1210,7 @@ function acPick(i) {
   var it = acItems[i]; if (!it || !acInput) return;
   acInput.value = it.v;
   VALS[acInput.name] = it.v;
+  VALS[acInput.name + '_ll'] = it.ll || null;
   acInput.dispatchEvent(new Event('input', { bubbles: true }));
   acInput.dispatchEvent(new Event('change', { bubbles: true }));
   acHide();
@@ -1246,7 +1257,7 @@ API.locate = function (comp) {
     fetch(GEO + 'reverse?lon=' + c.longitude + '&lat=' + c.latitude + '&limit=1', { mode: 'cors' }).then(function (r) { return r.json(); }).then(function (j) {
       var p = ((j.features || [])[0] || {}).properties;
       if (!p) throw 0;
-      setField('origin', p.label);
+      setField('origin', p.label); VALS.origin_ll = [c.latitude, c.longitude];
       comp.setState({ loc: true, locShort: [p.postcode, p.city].filter(Boolean).join(' ') });
       API.detectRoute(comp);
     }).catch(function () {
@@ -1341,6 +1352,27 @@ function kindOf(t) {
   if (/^gare\b/.test(n)) return 'gare';
   return null;
 }
+var RATES = { c: 2.50, e: 3.13, s: 5.63, v: 3.50 }, DIST = {}, KM = { km: 0 };
+function hav(a, b) { var R = 6371, r = Math.PI / 180, dl = (b[0] - a[0]) * r, dn = (b[1] - a[1]) * r; var x = Math.sin(dl / 2) * Math.sin(dl / 2) + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dn / 2) * Math.sin(dn / 2); return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x)); }
+var kmComp = null;
+API.kmGrid = function (base) {
+  var a = VALS.origin_ll, b = VALS.destination_ll;
+  KM.km = 0;
+  if (!a || !b || !base) return null;
+  var key = a.join(',') + ';' + b.join(',');
+  if (DIST[key] == null) {
+    DIST[key] = Math.round(hav(a, b) * 1.3);
+    fetch('https://router.project-osrm.org/route/v1/driving/' + a[1] + ',' + a[0] + ';' + b[1] + ',' + b[0] + '?overview=false', { mode: 'cors' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { var d = j && j.routes && j.routes[0] && j.routes[0].distance; if (d) { DIST[key] = Math.round(d / 1000); if (kmComp) kmComp.setState({ kmT: Date.now() }); } })
+      .catch(function () {});
+  }
+  var km = DIST[key]; KM.km = km;
+  var g = {};
+  ['c', 'e', 's', 'v'].forEach(function (k) { g[k] = Math.max(base[k] || 0, Math.ceil(km * RATES[k] / 5) * 5); });
+  return g;
+};
+API.kmInfo = function () { return KM.km ? KM.km + ' km' : ''; };
 API.outsideParis = function () {
   var a = FCPV('origin') || FCPV('qfrom') || '', b = FCPV('destination') || '';
   var other = kindOf(a) ? b : kindOf(b) ? a : '';
@@ -1414,6 +1446,8 @@ function deepLink(inst) {
   var ap = AIRPORTS[q.ap] || q.place || '';
   if (ap) { if (q.dir === 'dep') { VALS.destination = ap; if (q.addr) VALS.origin = q.addr; } else { VALS.origin = ap; if (q.addr) VALS.destination = q.addr; } }
   else if (q.addr) VALS.origin = q.addr;
+  var apll = PLACE_LL[ap] || null, all = q.ll ? q.ll.split(',').map(Number) : null;
+  if (ap) { if (q.dir === 'dep') { VALS.destination_ll = apll; VALS.origin_ll = all; } else { VALS.origin_ll = apll; VALS.destination_ll = all; } }
   if (q.date) VALS.date = q.date;
   if (q.flight) VALS.flight = q.flight;
   var st = { sheet: 'booking', bStep: 'form', bMode: 'transfer', requested: false };
@@ -1427,6 +1461,7 @@ function deepLink(inst) {
 API.goBook = function (o) {
   var p = ['route=' + (o.route || ''), 'tier=' + (o.tier || 'e'), 'dir=' + (o.dir || 'arr'), 'ap=' + (o.ap || '')];
   ['addr', 'date', 'flight'].forEach(function (k) { if (FCPV(k)) p.push(k + '=' + encodeURIComponent(FCPV(k))); });
+  if (VALS.addr_ll) p.push('ll=' + VALS.addr_ll.join(','));
   if (o.greeter) p.push('greeter=1');
   location.href = (window.FCP_HOME_URL || '/') + '#reserver?' + p.join('&');
 };
