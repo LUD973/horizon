@@ -1388,8 +1388,8 @@ var TOURS = [
 var EXCS = [
   { k: 'versailles', n: 'Château de Versailles', h: 6, km: 40, P: { c: 535, e: 625, v: 720, s: 1000 }, d: 'Le château, la galerie des Glaces et les jardins à la française.' },
   { k: 'giverny', n: 'Giverny · jardins de Monet', h: 6, km: 160, P: { c: 595, e: 700, v: 805, s: 1115 }, d: 'La maison et les jardins de Claude Monet, le bassin aux nymphéas.' },
-  { k: 'fontainebleau', n: 'Fontainebleau & Barbizon', h: 8, km: 140, P: { c: 755, e: 885, v: 1020, s: 1415 }, d: 'Le château des rois de France et le village des peintres.' },
-  { k: 'champagne', n: 'Champagne · Reims & Épernay', h: 10, km: 300, P: { c: 835, e: 980, v: 1130, s: 1570 }, d: 'La cathédrale de Reims, une grande maison de champagne, un vigneron et l’avenue de Champagne.' },
+  { k: 'fontainebleau', n: 'Fontainebleau & Barbizon', h: 8, km: 140, P: null, d: 'Le château des rois de France et le village des peintres.' },
+  { k: 'champagne', n: 'Champagne · Reims & Épernay', h: 10, km: 300, P: null, d: 'La cathédrale de Reims, une grande maison de champagne, un vigneron et l’avenue de Champagne.' },
   { k: 'mesure', n: 'Votre journée sur mesure', h: 0, km: 0, P: null, d: 'Châteaux de la Loire, Normandie, Mont-Saint-Michel, Chantilly ou votre propre itinéraire : la Maison vous adresse un devis.' }
 ];
 function guideFee(x) { return x.h <= 6 ? 300 : 450; }
@@ -1410,7 +1410,7 @@ API.tourCards = function (S, set, tier, fmt) {
 };
 API.excCards = function (S, set, tier, fmt) {
   var cur = excOf(S).k, t = TIER_NAMES[tier] ? tier : 'e';
-  return EXCS.map(function (x) { var o = cardStyle(x.k === cur), g = API.excGrid({ bExc: x.k, bGuide: S.bGuide }); o.n = x.n; o.d = x.d; o.meta = g ? x.h + ' h · ' + fmt(g[t]) : 'Sur devis'; o.pick = function () { set({ bExc: x.k }); }; return o; });
+  return EXCS.map(function (x) { var o = cardStyle(x.k === cur), g = API.excGrid({ bExc: x.k, bGuide: S.bGuide }); o.n = x.n; o.d = x.d; o.meta = g ? x.h + ' h · ' + fmt(g[t]) : (x.h ? x.h + ' h · sur devis' : 'Sur devis'); o.pick = function () { set({ bExc: x.k }); }; return o; });
 };
 API.excOpts = function (S, set, fmt) {
   var x = excOf(S), on = function (a) { return { sel: a ? 'true' : 'false', bg: a ? '#0B1F3A' : '#FFFFFF', fg: a ? '#F6F1E7' : '#0B1F3A', border: a ? '#0B1F3A' : 'rgba(11,31,58,.2)' }; };
@@ -1421,7 +1421,7 @@ API.excOpts = function (S, set, fmt) {
 };
 API.kmRule = function (S, tier) {
   var t = RATES[tier] ? tier : 'e';
-  if (S.bMode === 'excursion') { var x = excOf(S); if (!x.P) return 'Itinéraire, durée et tarif établis sur devis par la Maison. Précisez vos envies dans votre message.'; return 'Prix par véhicule, selon la gamme : ' + x.h + ' h avec votre chauffeur, environ ' + x.km + ' km aller-retour compris. Heure supplémentaire au tarif horaire de la gamme.'; }
+  if (S.bMode === 'excursion') { var x = excOf(S); if (!x.P) return (x.h ? x.n + ' : journée d’environ ' + x.h + ' h. ' : '') + 'Itinéraire, formule (avec ou sans guide) et tarif établis sur devis par la Maison. Précisez vos envies dans votre message.'; return 'Prix par véhicule, selon la gamme : ' + x.h + ' h avec votre chauffeur, environ ' + x.km + ' km aller-retour compris. Heure supplémentaire au tarif horaire de la gamme.'; }
   return KM_PER_H + ' km inclus par heure de mise à disposition. Au-delà, le kilomètre est facturé ' + eur(RATES[t]) + ' en gamme ' + TIER_NAMES[t] + '.';
 };
 API.offerLabel = function (S) {
