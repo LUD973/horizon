@@ -560,25 +560,22 @@ var TOURS = [
   { k: 'shopping', n: 'Paris shopping', h: 4, d: 'Avenue Montaigne, Faubourg Saint-Honoré, place Vendôme, grands magasins : votre chauffeur vous attend à chaque adresse.' }
 ];
 var EXCS = [
-  { k: 'versailles', n: 'Château de Versailles', f: 'Demi-journée', h: 4, km: 40, d: 'Le château, les jardins et le domaine de Trianon.' },
-  { k: 'giverny', n: 'Giverny · jardins de Monet', f: 'Journée', h: 8, km: 160, d: 'La maison et les jardins de Claude Monet, la vallée de la Seine.' },
-  { k: 'chantilly', n: 'Château de Chantilly', f: 'Journée', h: 8, km: 100, d: 'Le château, le musée Condé et les Grandes Écuries.' },
-  { k: 'fontainebleau', n: 'Fontainebleau & Barbizon', f: 'Journée', h: 8, km: 140, d: 'Le château des rois de France et le village des peintres.' },
-  { k: 'champagne', n: 'Champagne · Reims & Épernay', f: 'Journée', h: 9, km: 300, d: 'La cathédrale de Reims, l’avenue de Champagne et une maison de champagne.' },
-  { k: 'loire', n: 'Châteaux de la Loire', f: 'Journée', h: 10, km: 480, d: 'Chambord et Chenonceau dans la journée.' },
-  { k: 'normandie', n: 'Normandie · Honfleur & Étretat', f: 'Journée', h: 10, km: 420, d: 'Le Vieux-Bassin de Honfleur et les falaises d’Étretat.' },
-  { k: 'msm', n: 'Mont-Saint-Michel', f: 'Journée', h: 13, km: 720, d: 'L’abbaye et la baie. Une longue journée, départ tôt le matin.' }
+  { k: 'versailles', n: 'Château de Versailles', h: 6, km: 40, P: { c: 535, e: 625, v: 720, s: 1000 }, d: 'Le château, la galerie des Glaces et les jardins à la française.' },
+  { k: 'giverny', n: 'Giverny · jardins de Monet', h: 6, km: 160, P: { c: 595, e: 700, v: 805, s: 1115 }, d: 'La maison et les jardins de Claude Monet, le bassin aux nymphéas.' },
+  { k: 'fontainebleau', n: 'Fontainebleau & Barbizon', h: 8, km: 140, P: { c: 755, e: 885, v: 1020, s: 1415 }, d: 'Le château des rois de France et le village des peintres.' },
+  { k: 'champagne', n: 'Champagne · Reims & Épernay', h: 10, km: 300, P: { c: 835, e: 980, v: 1130, s: 1570 }, d: 'La cathédrale de Reims, une grande maison de champagne, un vigneron et l’avenue de Champagne.' },
+  { k: 'mesure', n: 'Votre journée sur mesure', h: 0, km: 0, P: null, d: 'Châteaux de la Loire, Normandie, Mont-Saint-Michel, Chantilly ou votre propre itinéraire : la Maison vous adresse un devis.' }
 ];
+function guideFee(x) { return x.h <= 6 ? 300 : 450; }
 var TIER_NAMES = { c: 'Confort', e: 'Business', s: 'Signature', v: 'Van' };
 function eur(n) { return String(n.toFixed(2)).replace('.', ',') + ' €'; }
 function cardStyle(on) { return { sel: on ? 'true' : 'false', bg: on ? '#0B1F3A' : '#FFFFFF', fg: on ? '#F6F1E7' : '#0B1F3A', border: on ? '#0B1F3A' : 'rgba(11,31,58,.2)' }; }
 function tourOf(S) { return TOURS.filter(function (t) { return t.k === S.bTour; })[0] || TOURS[0]; }
 function excOf(S) { return EXCS.filter(function (x) { return x.k === S.bExc; })[0] || EXCS[0]; }
 API.tourGrid = function (S, HOURLY) { var t = tourOf(S), g = {}; ['c', 'e', 's', 'v'].forEach(function (k) { g[k] = HOURLY[k] * t.h; }); return g; };
-API.excGrid = function (S, PRICES) {
-  var x = excOf(S), base = PRICES[x.f], H = { c: 75, e: 90, s: 140, v: 100 };
-  var fh = x.f === 'Demi-journée' ? 4 : 8, moreH = Math.max(0, x.h - fh), extra = Math.max(0, x.km - x.h * KM_PER_H), g = {};
-  ['c', 'e', 's', 'v'].forEach(function (k) { g[k] = Math.ceil((base[k] + moreH * H[k] + extra * RATES[k]) / 5) * 5; });
+API.excGrid = function (S) {
+  var x = excOf(S), g = {}; if (!x.P) return null;
+  ['c', 'e', 's', 'v'].forEach(function (k) { g[k] = x.P[k] + (S.bGuide ? guideFee(x) : 0); });
   return g;
 };
 API.tourCards = function (S, set, tier, fmt) {
@@ -587,18 +584,24 @@ API.tourCards = function (S, set, tier, fmt) {
 };
 API.excCards = function (S, set, tier, fmt) {
   var cur = excOf(S).k, t = TIER_NAMES[tier] ? tier : 'e';
-  var P = { 'Demi-journée': { c: 280, e: 340, s: 540, v: 380 }, 'Journée': { c: 540, e: 680, s: 1050, v: 740 } };
-  return EXCS.map(function (x) { var o = cardStyle(x.k === cur), g = API.excGrid({ bExc: x.k }, P); o.n = x.n; o.d = x.d; o.meta = x.h + ' h · ' + fmt(g[t]); o.pick = function () { set({ bExc: x.k }); }; return o; });
+  return EXCS.map(function (x) { var o = cardStyle(x.k === cur), g = API.excGrid({ bExc: x.k, bGuide: S.bGuide }); o.n = x.n; o.d = x.d; o.meta = g ? x.h + ' h · ' + fmt(g[t]) : 'Sur devis'; o.pick = function () { set({ bExc: x.k }); }; return o; });
+};
+API.excOpts = function (S, set, fmt) {
+  var x = excOf(S), on = function (a) { return { sel: a ? 'true' : 'false', bg: a ? '#0B1F3A' : '#FFFFFF', fg: a ? '#F6F1E7' : '#0B1F3A', border: a ? '#0B1F3A' : 'rgba(11,31,58,.2)' }; };
+  return { show: !!x.P,
+    formulas: [{ n: 'Visite libre', a: !S.bGuide, v: false }, { n: 'Avec guide-conférencier · + ' + fmt(guideFee(x)), a: !!S.bGuide, v: true }].map(function (f) { var o = on(f.a); o.n = f.n; o.pick = function () { set({ bGuide: f.v }); }; return o; }),
+    tickets: (function () { var o = on(!!S.bTickets); var ch = x.k === 'champagne'; o.n = S.bTickets ? (ch ? '✓ La Maison réserve vos visites et dégustations' : '✓ La Maison réserve vos billets') : (ch ? 'Réserver les visites et dégustations' : 'Réserver les billets d’entrée'); o.pick = function () { set({ bTickets: !S.bTickets }); }; return o; })(),
+    ticketNote: x.k === 'champagne' ? 'Visites et dégustations au tarif des maisons, par personne, ajoutées à la confirmation.' : 'Billets au tarif officiel, par personne, ajoutés à la confirmation.' };
 };
 API.kmRule = function (S, tier) {
   var t = RATES[tier] ? tier : 'e';
-  var base = KM_PER_H + ' km inclus par heure de mise à disposition. Au-delà, le kilomètre est facturé ' + eur(RATES[t]) + ' en gamme ' + TIER_NAMES[t] + '.';
-  if (S.bMode === 'excursion') { var x = excOf(S); return base + ' ' + x.n + ' : ' + x.h + ' h avec votre chauffeur, environ ' + x.km + ' km aller-retour, déjà compris dans le prix affiché.'; }
-  return base;
+  if (S.bMode === 'excursion') { var x = excOf(S); if (!x.P) return 'Itinéraire, durée et tarif établis sur devis par la Maison. Précisez vos envies dans votre message.'; return 'Prix par véhicule, selon la gamme : ' + x.h + ' h avec votre chauffeur, environ ' + x.km + ' km aller-retour compris. Heure supplémentaire au tarif horaire de la gamme.'; }
+  return KM_PER_H + ' km inclus par heure de mise à disposition. Au-delà, le kilomètre est facturé ' + eur(RATES[t]) + ' en gamme ' + TIER_NAMES[t] + '.';
 };
 API.offerLabel = function (S) {
   if (S.bMode === 'tour') { var t = tourOf(S); return t.n + ' · ' + t.h + ' h'; }
-  var x = excOf(S); return x.n + ' · ' + x.h + ' h';
+  var x = excOf(S); if (!x.P) return x.n + ' · sur devis';
+  return x.n + ' · ' + x.h + ' h · ' + (S.bGuide ? 'avec guide-conférencier' : 'visite libre') + (S.bTickets ? (x.k === 'champagne' ? ' · visites et dégustations à réserver par la Maison' : ' · billets à réserver par la Maison') : '');
 };
 var MODES_OK = null;
 API.modeAllowed = function (k) { return !MODES_OK || MODES_OK.indexOf(k) > -1; };
@@ -686,6 +689,8 @@ function deepLink(inst) {
   if (q.tier) st.bTier = q.tier;
   if (q.greeter === '1') st.greeter = true;
   if (q.exc) st.bExc = q.exc;
+  if (q.guide === '1') st.bGuide = true;
+  if (q.tickets === '1') st.bTickets = true;
   if (q.tour) st.bTour = q.tour;
   inst.comp.setState(st);
   try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
@@ -695,6 +700,8 @@ API.goBook = function (o) {
   var p = ['route=' + (o.route || ''), 'tier=' + (o.tier || 'e'), 'dir=' + (o.dir || 'arr'), 'ap=' + (o.ap || ''), 'modes=' + (o.modes || 'transfer,dispo')];
   if (o.mode) p.push('mode=' + o.mode);
   if (o.exc) p.push('exc=' + o.exc);
+  if (o.guide) p.push('guide=1');
+  if (o.tickets) p.push('tickets=1');
   if (o.tour) p.push('tour=' + o.tour);
   ['addr', 'date', 'flight'].forEach(function (k) { if (FCPV(k)) p.push(k + '=' + encodeURIComponent(FCPV(k))); });
   if (VALS.addr_ll) p.push('ll=' + VALS.addr_ll.join(','));
