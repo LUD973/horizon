@@ -957,6 +957,7 @@ function Instance(def, root) {
   root.addEventListener('input', this.onInput);
   root.addEventListener('scroll', this.onScroll, true);
   comp = new Cls({});
+  this.comp = comp;
   paint();
   if (comp.componentDidMount) comp.componentDidMount();
   this.destroy = function () {
@@ -1079,7 +1080,7 @@ var PLACES = [
   ['Paris Expo Porte de Versailles', 'Paris 15e', 'paris expo porte de versailles salon'],
   ['Paris Nord Villepinte', 'Villepinte · Parc des expositions', 'villepinte parc des expositions salon']
 ];
-var AC_FIELDS = { origin: 1, destination: 1, qfrom: 1 };
+var AC_FIELDS = { origin: 1, destination: 1, qfrom: 1, addr: 1 };
 var acBox = null, acInput = null, acItems = [], acSel = -1, acTimer = null, acSeq = 0;
 function norm(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
 function acEnsure() {
@@ -1287,7 +1288,8 @@ var WRAP_CSS =
   'body.fcp-home-page #main-content .container:before{display:none!important}' +
   'body.fcp-home-page #left-area{width:100%!important;padding:0!important;float:none!important}' +
   'body.fcp-home-page #main-content,body.fcp-home-page .entry-content{background:transparent;padding:0;margin:0}' +
-  'body.fcp-home-page article.page{padding:0!important;margin:0!important}';
+  'body.fcp-home-page article.page{padding:0!important;margin:0!important}' +
+  '@media (max-width:899px){body.fcp-svc-page .joinchat,body.fcp-svc-page .gt_switcher_wrapper{display:none!important}}';
 
 function addStyle(id, css) { var s = document.getElementById(id); if (!s) { s = document.createElement('style'); s.id = id; document.head.appendChild(s); } s.textContent = css; }
 
@@ -1302,6 +1304,31 @@ function showError(root, e) {
   } catch (x) {}
 }
 
+var AIRPORTS = { cdg: 'Aéroport Paris-Charles de Gaulle (CDG)', orly: 'Aéroport Paris-Orly (ORY)', lbg: 'Aéroport Paris-Le Bourget (LBG)', bva: 'Aéroport Paris-Beauvais (BVA)' };
+function deepLink(inst) {
+  var h = location.hash || '';
+  if (!inst || !inst.comp || h.indexOf('#reserver') !== 0) return;
+  var q = {}; (h.split('?')[1] || '').split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) q[p[0]] = decodeURIComponent((p[1] || '').replace(/\+/g, ' ')); });
+  var ap = AIRPORTS[q.ap] || q.place || '';
+  if (ap) { if (q.dir === 'dep') { VALS.destination = ap; if (q.addr) VALS.origin = q.addr; } else { VALS.origin = ap; if (q.addr) VALS.destination = q.addr; } }
+  else if (q.addr) VALS.origin = q.addr;
+  if (q.date) VALS.date = q.date;
+  if (q.flight) VALS.flight = q.flight;
+  var st = { sheet: 'booking', bStep: 'form', bMode: 'transfer', requested: false };
+  if (q.route) { st.bRoute = q.route; st.routeManual = true; }
+  if (q.tier) st.bTier = q.tier;
+  if (q.greeter === '1') st.greeter = true;
+  inst.comp.setState(st);
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+}
+
+API.goBook = function (o) {
+  var p = ['route=' + (o.route || ''), 'tier=' + (o.tier || 'e'), 'dir=' + (o.dir || 'arr'), 'ap=' + (o.ap || '')];
+  ['addr', 'date', 'flight'].forEach(function (k) { if (FCPV(k)) p.push(k + '=' + encodeURIComponent(FCPV(k))); });
+  if (o.greeter) p.push('greeter=1');
+  location.href = (window.FCP_HOME_URL || '/') + '#reserver?' + p.join('&');
+};
+
 function boot() {
   var root = document.getElementById('fcp-home');
   if (!root) { root = document.createElement('div'); root.id = 'fcp-home'; document.body.insertBefore(root, document.body.firstChild); }
@@ -1310,11 +1337,12 @@ function boot() {
   var home = document.createComment('fcp-home');
   root.parentNode.insertBefore(home, root);
   document.body.classList.add('fcp-home-page');
+  if (!LAYOUTS.m) document.body.classList.add('fcp-svc-page');
   if (!document.querySelector('link[data-fcp-fonts]')) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = FONTS; l.setAttribute('data-fcp-fonts', ''); document.head.appendChild(l); }
   addStyle('fcp-home-wrap', WRAP_CSS);
   try { acInit(); } catch (e) {}
   var cur = null, inst = null;
-  function pick() { return window.innerWidth >= 1024 ? 'd' : 'm'; }
+  function pick() { return !LAYOUTS.m ? 'd' : window.innerWidth >= 1024 ? 'd' : 'm'; }
   function mount() {
     var k = pick(); if (k === cur) return;
     if (inst) inst.destroy();
@@ -1326,6 +1354,7 @@ function boot() {
     try { inst = new Instance(LAYOUTS[k], root); } catch (e) { inst = null; showError(root, e); if (window.console) console.error(e); }
   }
   mount();
+  try { deepLink(inst); } catch (e) {}
   var t; window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(mount, 150); });
 }
 function safeBoot() { try { boot(); } catch (e) { var r = document.getElementById('fcp-home'); if (r) showError(r, e); } }
