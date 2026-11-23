@@ -70,7 +70,8 @@ class Component extends DCLogic {
     const HOURLY = { c: 75, e: 90, s: 140, v: 100 };
     const madH = S.madH || 3, madD = S.madD || 2;
     const scale = (g, n) => ({ c: g.c * n, e: g.e * n, s: g.s * n, v: g.v * n });
-    const grid = isTr ? (S.bRoute === 'ville' ? ZONES[zone] : PRICES[S.bRoute]) : S.bDur === 'À l’heure' ? scale(HOURLY, madH) : S.bDur === 'Plusieurs jours' ? scale(PRICES['Journée'], madD) : PRICES[S.bDur];
+    const offParis = isTr && S.bRoute !== 'ville' && S.bRoute !== 'cdgorly' && FCP_API.outsideParis();
+    const grid = isTr ? (S.bRoute === 'ville' ? ZONES[zone] : (offParis ? null : PRICES[S.bRoute])) : S.bDur === 'À l’heure' ? scale(HOURLY, madH) : S.bDur === 'Plusieurs jours' ? scale(PRICES['Journée'], madD) : PRICES[S.bDur];
     const bigGroup = S.bPax === '8 et +';
     const bagS = S.bagS || 0, bagC = S.bagC || 0;
     const bagsOver = bagS > 2 || bagC > 2;
@@ -313,7 +314,7 @@ class Component extends DCLogic {
       pjSend: () => FCP_API.sendProject(this),
       fl: FCP_API.flight(FCPV('flight')),
       gMix, gBers, gBerSub, gBerTitle,
-      routeNote: S.routeAuto && S.bMode === 'transfer' ? 'Trajet reconnu : ' + ((ROUTE_DEF.find(r => r.k === S.bRoute) || {}).l || '') + (S.bRoute === 'ville' ? ' · ' + ({ paris: 'Paris', petite: 'Petite couronne', grande: 'Grande couronne', hors: 'Hors Île-de-France' })[S.bZone || 'paris'] : '') + (total ? ' · ' + fmt(total) : '') : '',
+      routeNote: S.routeAuto && S.bMode === 'transfer' ? 'Trajet reconnu : ' + ((ROUTE_DEF.find(r => r.k === S.bRoute) || {}).l || '') + (S.bRoute === 'ville' ? ' · ' + ({ paris: 'Paris', petite: 'Petite couronne', grande: 'Grande couronne', hors: 'Hors Île-de-France' })[S.bZone || 'paris'] : '') + (total ? ' · ' + fmt(total) : offParis ? ' · adresse hors Paris : tarif sur mesure, confirmé par la Maison' : '') : '',
       heroPassed: S.heroPassed,
       useLoc: () => FCP_API.locate(this),
       locLabel: S.loc === 'busy' ? 'Localisation en cours…' : S.loc === 'denied' ? 'Position bloquée par le navigateur · saisissez l’adresse' : S.loc === 'err' ? 'Position introuvable ici · saisissez l’adresse' : S.loc ? 'Position détectée' + (S.locShort ? ' · ' + S.locShort : '') : 'Utiliser ma position',
@@ -442,7 +443,8 @@ class Component extends DCLogic {
     const HOURLY = { c: 75, e: 90, s: 140, v: 100 };
     const madH = S.madH || 3, madD = S.madD || 2;
     const scale = (g, n) => ({ c: g.c * n, e: g.e * n, s: g.s * n, v: g.v * n });
-    const grid = isTr ? (S.bRoute === 'ville' ? ZONES[zone] : PRICES[S.bRoute]) : S.bDur === 'À l’heure' ? scale(HOURLY, madH) : S.bDur === 'Plusieurs jours' ? scale(PRICES['Journée'], madD) : PRICES[S.bDur];
+    const offParis = isTr && S.bRoute !== 'ville' && S.bRoute !== 'cdgorly' && FCP_API.outsideParis();
+    const grid = isTr ? (S.bRoute === 'ville' ? ZONES[zone] : (offParis ? null : PRICES[S.bRoute])) : S.bDur === 'À l’heure' ? scale(HOURLY, madH) : S.bDur === 'Plusieurs jours' ? scale(PRICES['Journée'], madD) : PRICES[S.bDur];
     const bigGroup = S.bPax === '8 et +';
     const bagS = S.bagS || 0, bagC = S.bagC || 0;
     const bagsOver = bagS > 2 || bagC > 2;
@@ -685,7 +687,7 @@ class Component extends DCLogic {
       pjSend: () => FCP_API.sendProject(this),
       fl: FCP_API.flight(FCPV('flight')),
       gMix, gBers, gBerSub, gBerTitle,
-      routeNote: S.routeAuto && S.bMode === 'transfer' ? 'Trajet reconnu : ' + ((ROUTE_DEF.find(r => r.k === S.bRoute) || {}).l || '') + (S.bRoute === 'ville' ? ' · ' + ({ paris: 'Paris', petite: 'Petite couronne', grande: 'Grande couronne', hors: 'Hors Île-de-France' })[S.bZone || 'paris'] : '') + (total ? ' · ' + fmt(total) : '') : '',
+      routeNote: S.routeAuto && S.bMode === 'transfer' ? 'Trajet reconnu : ' + ((ROUTE_DEF.find(r => r.k === S.bRoute) || {}).l || '') + (S.bRoute === 'ville' ? ' · ' + ({ paris: 'Paris', petite: 'Petite couronne', grande: 'Grande couronne', hors: 'Hors Île-de-France' })[S.bZone || 'paris'] : '') + (total ? ' · ' + fmt(total) : offParis ? ' · adresse hors Paris : tarif sur mesure, confirmé par la Maison' : '') : '',
       heroPassed: S.heroPassed,
       useLoc: () => FCP_API.locate(this),
       locLabel: S.loc === 'busy' ? 'Localisation en cours…' : S.loc === 'denied' ? 'Position bloquée par le navigateur · saisissez l’adresse' : S.loc === 'err' ? 'Position introuvable ici · saisissez l’adresse' : S.loc ? 'Position détectée' + (S.locShort ? ' · ' + S.locShort : '') : 'Utiliser ma position',
@@ -949,7 +951,7 @@ function Instance(def, root) {
       return;
     }
     var t = ev.target.closest('[data-click]'); if (t && root.contains(t)) { if (t.tagName !== 'A' || t.getAttribute('href') === '#' || !t.getAttribute('href')) ev.preventDefault(); H[+t.dataset.click](ev); } };
-  this.onChange = function (ev) { var nm = ev.target.name; if (nm) VALS[nm] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; var t = ev.target.closest('[data-change]'); if (t) H[+t.dataset.change](ev); if (nm === 'origin' || nm === 'destination' || nm === 'qfrom') setTimeout(function () { API.detectRoute(comp); }, 0); if (nm === 'origin' || nm === 'destination' || nm === 'date' || nm === 'flight') API.scheduleFlightCheck(comp); };
+  this.onChange = function (ev) { var nm = ev.target.name; if (nm) VALS[nm] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; var t = ev.target.closest('[data-change]'); if (t) H[+t.dataset.change](ev); if (nm === 'origin' || nm === 'destination' || nm === 'qfrom') setTimeout(function () { API.detectRoute(comp); comp.setState({ addrT: Date.now() }); }, 0); if (nm === 'origin' || nm === 'destination' || nm === 'date' || nm === 'flight') API.scheduleFlightCheck(comp); };
   this.onInput = function (ev) { if (ev.target.name) VALS[ev.target.name] = ev.target.value; if (ev.target.name === 'flight' || ev.target.name === 'ret_flight') { comp.setState({ flT: Date.now() }); if (ev.target.name === 'flight') API.scheduleFlightCheck(comp); } };
   this.onScroll = function (ev) { var t = ev.target; if (t && t.dataset && t.dataset.scroll) H[+t.dataset.scroll]({ currentTarget: t, target: t }); };
   root.addEventListener('click', this.onClick);
@@ -1339,6 +1341,13 @@ function kindOf(t) {
   if (/^gare\b/.test(n)) return 'gare';
   return null;
 }
+API.outsideParis = function () {
+  var a = FCPV('origin') || FCPV('qfrom') || '', b = FCPV('destination') || '';
+  var other = kindOf(a) ? b : kindOf(b) ? a : '';
+  if (!other || kindOf(other)) return false;
+  var z = zoneOf(other);
+  return !!z && z !== 'paris';
+};
 API.detectRoute = function (comp) {
   var S = comp.state;
   if (S.bMode !== 'transfer' || S.routeManual) return;

@@ -129,7 +129,7 @@ function Instance(def, root) {
       return;
     }
     var t = ev.target.closest('[data-click]'); if (t && root.contains(t)) { if (t.tagName !== 'A' || t.getAttribute('href') === '#' || !t.getAttribute('href')) ev.preventDefault(); H[+t.dataset.click](ev); } };
-  this.onChange = function (ev) { var nm = ev.target.name; if (nm) VALS[nm] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; var t = ev.target.closest('[data-change]'); if (t) H[+t.dataset.change](ev); if (nm === 'origin' || nm === 'destination' || nm === 'qfrom') setTimeout(function () { API.detectRoute(comp); }, 0); if (nm === 'origin' || nm === 'destination' || nm === 'date' || nm === 'flight') API.scheduleFlightCheck(comp); };
+  this.onChange = function (ev) { var nm = ev.target.name; if (nm) VALS[nm] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; var t = ev.target.closest('[data-change]'); if (t) H[+t.dataset.change](ev); if (nm === 'origin' || nm === 'destination' || nm === 'qfrom') setTimeout(function () { API.detectRoute(comp); comp.setState({ addrT: Date.now() }); }, 0); if (nm === 'origin' || nm === 'destination' || nm === 'date' || nm === 'flight') API.scheduleFlightCheck(comp); };
   this.onInput = function (ev) { if (ev.target.name) VALS[ev.target.name] = ev.target.value; if (ev.target.name === 'flight' || ev.target.name === 'ret_flight') { comp.setState({ flT: Date.now() }); if (ev.target.name === 'flight') API.scheduleFlightCheck(comp); } };
   this.onScroll = function (ev) { var t = ev.target; if (t && t.dataset && t.dataset.scroll) H[+t.dataset.scroll]({ currentTarget: t, target: t }); };
   root.addEventListener('click', this.onClick);
@@ -519,6 +519,13 @@ function kindOf(t) {
   if (/^gare\b/.test(n)) return 'gare';
   return null;
 }
+API.outsideParis = function () {
+  var a = FCPV('origin') || FCPV('qfrom') || '', b = FCPV('destination') || '';
+  var other = kindOf(a) ? b : kindOf(b) ? a : '';
+  if (!other || kindOf(other)) return false;
+  var z = zoneOf(other);
+  return !!z && z !== 'paris';
+};
 API.detectRoute = function (comp) {
   var S = comp.state;
   if (S.bMode !== 'transfer' || S.routeManual) return;
