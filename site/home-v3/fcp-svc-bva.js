@@ -685,6 +685,8 @@ function deepLink(inst) {
   if (q.route) { st.bRoute = q.route; st.routeManual = true; }
   if (q.tier) st.bTier = q.tier;
   if (q.greeter === '1') st.greeter = true;
+  if (q.exc) st.bExc = q.exc;
+  if (q.tour) st.bTour = q.tour;
   inst.comp.setState(st);
   try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
 }
@@ -692,6 +694,8 @@ function deepLink(inst) {
 API.goBook = function (o) {
   var p = ['route=' + (o.route || ''), 'tier=' + (o.tier || 'e'), 'dir=' + (o.dir || 'arr'), 'ap=' + (o.ap || ''), 'modes=' + (o.modes || 'transfer,dispo')];
   if (o.mode) p.push('mode=' + o.mode);
+  if (o.exc) p.push('exc=' + o.exc);
+  if (o.tour) p.push('tour=' + o.tour);
   ['addr', 'date', 'flight'].forEach(function (k) { if (FCPV(k)) p.push(k + '=' + encodeURIComponent(FCPV(k))); });
   if (VALS.addr_ll) p.push('ll=' + VALS.addr_ll.join(','));
   if (o.greeter) p.push('greeter=1');
