@@ -1390,10 +1390,10 @@ var EXCS = [
   { k: 'giverny', n: 'Giverny · jardins de Monet', f: 'Journée', h: 8, km: 160, d: 'La maison et les jardins de Claude Monet, la vallée de la Seine.' },
   { k: 'chantilly', n: 'Château de Chantilly', f: 'Journée', h: 8, km: 100, d: 'Le château, le musée Condé et les Grandes Écuries.' },
   { k: 'fontainebleau', n: 'Fontainebleau & Barbizon', f: 'Journée', h: 8, km: 140, d: 'Le château des rois de France et le village des peintres.' },
-  { k: 'champagne', n: 'Champagne · Reims & Épernay', f: 'Journée', h: 8, km: 300, d: 'La cathédrale de Reims, l’avenue de Champagne et une maison de champagne.' },
-  { k: 'loire', n: 'Châteaux de la Loire', f: 'Journée', h: 8, km: 480, d: 'Chambord et Chenonceau dans la journée.' },
-  { k: 'normandie', n: 'Normandie · Honfleur & Étretat', f: 'Journée', h: 8, km: 420, d: 'Le Vieux-Bassin de Honfleur et les falaises d’Étretat.' },
-  { k: 'msm', n: 'Mont-Saint-Michel', f: 'Journée', h: 8, km: 720, d: 'L’abbaye et la baie. Une longue journée, départ tôt le matin.' }
+  { k: 'champagne', n: 'Champagne · Reims & Épernay', f: 'Journée', h: 9, km: 300, d: 'La cathédrale de Reims, l’avenue de Champagne et une maison de champagne.' },
+  { k: 'loire', n: 'Châteaux de la Loire', f: 'Journée', h: 10, km: 480, d: 'Chambord et Chenonceau dans la journée.' },
+  { k: 'normandie', n: 'Normandie · Honfleur & Étretat', f: 'Journée', h: 10, km: 420, d: 'Le Vieux-Bassin de Honfleur et les falaises d’Étretat.' },
+  { k: 'msm', n: 'Mont-Saint-Michel', f: 'Journée', h: 13, km: 720, d: 'L’abbaye et la baie. Une longue journée, départ tôt le matin.' }
 ];
 var TIER_NAMES = { c: 'Confort', e: 'Business', s: 'Signature', v: 'Van' };
 function eur(n) { return String(n.toFixed(2)).replace('.', ',') + ' €'; }
@@ -1402,8 +1402,9 @@ function tourOf(S) { return TOURS.filter(function (t) { return t.k === S.bTour; 
 function excOf(S) { return EXCS.filter(function (x) { return x.k === S.bExc; })[0] || EXCS[0]; }
 API.tourGrid = function (S, HOURLY) { var t = tourOf(S), g = {}; ['c', 'e', 's', 'v'].forEach(function (k) { g[k] = HOURLY[k] * t.h; }); return g; };
 API.excGrid = function (S, PRICES) {
-  var x = excOf(S), base = PRICES[x.f], extra = Math.max(0, x.km - x.h * KM_PER_H), g = {};
-  ['c', 'e', 's', 'v'].forEach(function (k) { g[k] = Math.ceil((base[k] + extra * RATES[k]) / 5) * 5; });
+  var x = excOf(S), base = PRICES[x.f], H = { c: 75, e: 90, s: 140, v: 100 };
+  var fh = x.f === 'Demi-journée' ? 4 : 8, moreH = Math.max(0, x.h - fh), extra = Math.max(0, x.km - x.h * KM_PER_H), g = {};
+  ['c', 'e', 's', 'v'].forEach(function (k) { g[k] = Math.ceil((base[k] + moreH * H[k] + extra * RATES[k]) / 5) * 5; });
   return g;
 };
 API.tourCards = function (S, set, tier, fmt) {
@@ -1413,17 +1414,17 @@ API.tourCards = function (S, set, tier, fmt) {
 API.excCards = function (S, set, tier, fmt) {
   var cur = excOf(S).k, t = TIER_NAMES[tier] ? tier : 'e';
   var P = { 'Demi-journée': { c: 280, e: 340, s: 540, v: 380 }, 'Journée': { c: 540, e: 680, s: 1050, v: 740 } };
-  return EXCS.map(function (x) { var o = cardStyle(x.k === cur), g = API.excGrid({ bExc: x.k }, P); o.n = x.n; o.d = x.d; o.meta = x.f + ' · ' + fmt(g[t]); o.pick = function () { set({ bExc: x.k }); }; return o; });
+  return EXCS.map(function (x) { var o = cardStyle(x.k === cur), g = API.excGrid({ bExc: x.k }, P); o.n = x.n; o.d = x.d; o.meta = x.h + ' h · ' + fmt(g[t]); o.pick = function () { set({ bExc: x.k }); }; return o; });
 };
 API.kmRule = function (S, tier) {
   var t = RATES[tier] ? tier : 'e';
   var base = KM_PER_H + ' km inclus par heure de mise à disposition. Au-delà, le kilomètre est facturé ' + eur(RATES[t]) + ' en gamme ' + TIER_NAMES[t] + '.';
-  if (S.bMode === 'excursion') { var x = excOf(S); return base + ' ' + x.n + ' : environ ' + x.km + ' km aller-retour, déjà compris dans le prix affiché.'; }
+  if (S.bMode === 'excursion') { var x = excOf(S); return base + ' ' + x.n + ' : ' + x.h + ' h avec votre chauffeur, environ ' + x.km + ' km aller-retour, déjà compris dans le prix affiché.'; }
   return base;
 };
 API.offerLabel = function (S) {
   if (S.bMode === 'tour') { var t = tourOf(S); return t.n + ' · ' + t.h + ' h'; }
-  var x = excOf(S); return x.n + ' · ' + x.f + ' (' + x.h + ' h)';
+  var x = excOf(S); return x.n + ' · ' + x.h + ' h';
 };
 API.outsideParis = function () {
   var a = FCPV('origin') || FCPV('qfrom') || '', b = FCPV('destination') || '';
