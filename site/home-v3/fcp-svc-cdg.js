@@ -176,12 +176,13 @@ var API = {
     if (err.length) { comp.setState({ bkErr: err.join(' ') }); return; }
     var routeLabel = ((r.recap || [])[1] || {}).v || '';
     var origin = FCPV('origin') || FCPV('qfrom') || (k.isTransfer ? routeLabel : '');
-    var dest = FCPV('destination') || (k.isTransfer ? routeLabel : 'Mise à disposition' + (S.bDur ? ' · ' + S.bDur : ''));
+    var dest = FCPV('destination') || (k.isTransfer ? routeLabel : S.bMode === 'tour' ? 'City tour · ' + API.offerLabel(S) : S.bMode === 'excursion' ? 'Excursion · ' + API.offerLabel(S) : 'Mise à disposition' + (S.bDur ? ' · ' + S.bDur : ''));
     if (!origin || origin.length < 2) { comp.setState({ bkErr: 'Indiquez le lieu de prise en charge.' }); return; }
     var pax = k.bigGroup ? k.gPax : ({ '1 – 3': 3, '4 – 7': 7 })[S.bPax] || 1;
     var lines = (r.recap || []).map(function (x) { return x.k + ' : ' + x.v; });
     lines.push('Total indicatif : ' + (r.totalLabel || 'Tarif sur mesure'));
     if (API.kmInfo()) lines.push('Distance estimée : ' + API.kmInfo() + ' (tarif au kilomètre)');
+    if (!k.isTransfer) lines.push('Règle : ' + KM_PER_H + ' km inclus par heure, kilomètre supplémentaire au tarif de la gamme');
     var fl = API.flight(FCPV('flight'));
     if (fl.code) lines.push('Vol : ' + fl.code + (fl.al ? ' (' + fl.al + ')' : ' (compagnie non reconnue)') + ' · Suivi : ' + fl.url);
     var rf = API.flight(FCPV('ret_flight'));
@@ -189,7 +190,7 @@ var API = {
     if (FCPV('pax_name')) lines.push('Passager : ' + FCPV('pax_name'));
     if (k.retM) lines.push('Retour : ' + [FCPV('ret_date'), FCPV('ret_time'), FCPV('ret_flight')].filter(Boolean).join(' · '));
     var payload = {
-      _fcp_nonce: '', category: 'mobility', subcategory: k.isTransfer ? 'transfer' : 'hourly', locale: 'fr', profile: 'individual',
+      _fcp_nonce: '', category: 'mobility', subcategory: k.isTransfer ? 'transfer' : ({ tour: 'city_tour', excursion: 'excursion' })[S.bMode] || 'hourly', locale: 'fr', profile: 'individual',
       first_name: name[0], last_name: name.slice(1).join(' '), email: email, phone: phone,
       service_date: date, service_time: FCPV('time') || FCPV('qtime') || '', origin: origin.slice(0, 160), destination: dest.slice(0, 160),
       passengers: pax, luggage: (k.bagS || 0) + (k.bagC || 0), flight_number: (fl.code || FCPV('flight') || '').replace(' ', ''), train_number: '',
@@ -551,6 +552,53 @@ API.kmGrid = function (base) {
   return g;
 };
 API.kmInfo = function () { return KM.km ? KM.km + ' km' : ''; };
+/* ---------- City tours & excursions (règle : 20 km inclus par heure) ---------- */
+var KM_PER_H = 20;
+var TOURS = [
+  { k: 'classique', n: 'Paris classique', h: 3, d: 'Tour Eiffel, Trocadéro, Champs-Élysées, Concorde, Louvre, Notre-Dame, Saint-Germain-des-Prés.' },
+  { k: 'nuit', n: 'Paris by night', h: 3, d: 'Paris illuminé : Tour Eiffel scintillante, Champs-Élysées, Opéra, quais de Seine.' },
+  { k: 'shopping', n: 'Paris shopping', h: 4, d: 'Avenue Montaigne, Faubourg Saint-Honoré, place Vendôme, grands magasins : votre chauffeur vous attend à chaque adresse.' }
+];
+var EXCS = [
+  { k: 'versailles', n: 'Château de Versailles', f: 'Demi-journée', h: 4, km: 40, d: 'Le château, les jardins et le domaine de Trianon.' },
+  { k: 'giverny', n: 'Giverny · jardins de Monet', f: 'Journée', h: 8, km: 160, d: 'La maison et les jardins de Claude Monet, la vallée de la Seine.' },
+  { k: 'chantilly', n: 'Château de Chantilly', f: 'Journée', h: 8, km: 100, d: 'Le château, le musée Condé et les Grandes Écuries.' },
+  { k: 'fontainebleau', n: 'Fontainebleau & Barbizon', f: 'Journée', h: 8, km: 140, d: 'Le château des rois de France et le village des peintres.' },
+  { k: 'champagne', n: 'Champagne · Reims & Épernay', f: 'Journée', h: 8, km: 300, d: 'La cathédrale de Reims, l’avenue de Champagne et une maison de champagne.' },
+  { k: 'loire', n: 'Châteaux de la Loire', f: 'Journée', h: 8, km: 480, d: 'Chambord et Chenonceau dans la journée.' },
+  { k: 'normandie', n: 'Normandie · Honfleur & Étretat', f: 'Journée', h: 8, km: 420, d: 'Le Vieux-Bassin de Honfleur et les falaises d’Étretat.' },
+  { k: 'msm', n: 'Mont-Saint-Michel', f: 'Journée', h: 8, km: 720, d: 'L’abbaye et la baie. Une longue journée, départ tôt le matin.' }
+];
+var TIER_NAMES = { c: 'Confort', e: 'Business', s: 'Signature', v: 'Van' };
+function eur(n) { return String(n.toFixed(2)).replace('.', ',') + ' €'; }
+function cardStyle(on) { return { sel: on ? 'true' : 'false', bg: on ? '#0B1F3A' : '#FFFFFF', fg: on ? '#F6F1E7' : '#0B1F3A', border: on ? '#0B1F3A' : 'rgba(11,31,58,.2)' }; }
+function tourOf(S) { return TOURS.filter(function (t) { return t.k === S.bTour; })[0] || TOURS[0]; }
+function excOf(S) { return EXCS.filter(function (x) { return x.k === S.bExc; })[0] || EXCS[0]; }
+API.tourGrid = function (S, HOURLY) { var t = tourOf(S), g = {}; ['c', 'e', 's', 'v'].forEach(function (k) { g[k] = HOURLY[k] * t.h; }); return g; };
+API.excGrid = function (S, PRICES) {
+  var x = excOf(S), base = PRICES[x.f], extra = Math.max(0, x.km - x.h * KM_PER_H), g = {};
+  ['c', 'e', 's', 'v'].forEach(function (k) { g[k] = Math.ceil((base[k] + extra * RATES[k]) / 5) * 5; });
+  return g;
+};
+API.tourCards = function (S, set, tier, fmt) {
+  var cur = tourOf(S).k, t = TIER_NAMES[tier] ? tier : 'e', H = { c: 75, e: 90, s: 140, v: 100 };
+  return TOURS.map(function (x) { var o = cardStyle(x.k === cur); o.n = x.n; o.d = x.d; o.meta = x.h + ' h · ' + fmt(H[t] * x.h); o.pick = function () { set({ bTour: x.k }); }; return o; });
+};
+API.excCards = function (S, set, tier, fmt) {
+  var cur = excOf(S).k, t = TIER_NAMES[tier] ? tier : 'e';
+  var P = { 'Demi-journée': { c: 280, e: 340, s: 540, v: 380 }, 'Journée': { c: 540, e: 680, s: 1050, v: 740 } };
+  return EXCS.map(function (x) { var o = cardStyle(x.k === cur), g = API.excGrid({ bExc: x.k }, P); o.n = x.n; o.d = x.d; o.meta = x.f + ' · ' + fmt(g[t]); o.pick = function () { set({ bExc: x.k }); }; return o; });
+};
+API.kmRule = function (S, tier) {
+  var t = RATES[tier] ? tier : 'e';
+  var base = KM_PER_H + ' km inclus par heure de mise à disposition. Au-delà, le kilomètre est facturé ' + eur(RATES[t]) + ' en gamme ' + TIER_NAMES[t] + '.';
+  if (S.bMode === 'excursion') { var x = excOf(S); return base + ' ' + x.n + ' : environ ' + x.km + ' km aller-retour, déjà compris dans le prix affiché.'; }
+  return base;
+};
+API.offerLabel = function (S) {
+  if (S.bMode === 'tour') { var t = tourOf(S); return t.n + ' · ' + t.h + ' h'; }
+  var x = excOf(S); return x.n + ' · ' + x.f + ' (' + x.h + ' h)';
+};
 API.outsideParis = function () {
   var a = FCPV('origin') || FCPV('qfrom') || '', b = FCPV('destination') || '';
   var other = kindOf(a) ? b : kindOf(b) ? a : '';
