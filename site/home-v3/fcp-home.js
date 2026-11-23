@@ -1306,6 +1306,7 @@ function boot() {
   var root = document.getElementById('fcp-home');
   if (!root) { root = document.createElement('div'); root.id = 'fcp-home'; document.body.insertBefore(root, document.body.firstChild); }
   root.removeAttribute('style');
+  root.innerHTML = '';
   var home = document.createComment('fcp-home');
   root.parentNode.insertBefore(home, root);
   document.body.classList.add('fcp-home-page');
