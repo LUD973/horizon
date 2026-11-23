@@ -543,8 +543,9 @@ var TOURS = [
   { k: 'shopping', n: 'Paris shopping', h: 4, d: 'Avenue Montaigne, Faubourg Saint-Honoré, place Vendôme, grands magasins : votre chauffeur vous attend à chaque adresse.' }
 ];
 var EXCS = [
-  { k: 'versailles', n: 'Château de Versailles', h: 6, km: 40, P: { c: 535, e: 625, v: 720, s: 1000 }, d: 'Le château, la galerie des Glaces et les jardins à la française.' },
-  { k: 'giverny', n: 'Giverny · jardins de Monet', h: 6, km: 160, P: { c: 595, e: 700, v: 805, s: 1115 }, d: 'La maison et les jardins de Claude Monet, le bassin aux nymphéas.' },
+  { k: 'versailles', n: 'Château de Versailles', h: 6, km: 40, P: { c: 690, e: 850, v: 950, s: 1290 }, d: 'Le château, la galerie des Glaces et les jardins à la française.' },
+  { k: 'giverny', n: 'Giverny · jardins de Monet', h: 6, km: 160, P: { c: 750, e: 920, v: 1020, s: 1390 }, d: 'La maison et les jardins de Claude Monet, le bassin aux nymphéas. D’avril à octobre.' },
+  { k: 'versgiv', n: 'Versailles & Giverny', h: 9, km: 190, P: { c: 1050, e: 1290, v: 1380, s: 1850 }, d: 'Le château de Versailles le matin, les jardins de Monet l’après-midi. D’avril à octobre.' },
   { k: 'fontainebleau', n: 'Fontainebleau & Barbizon', h: 8, km: 140, P: null, d: 'Le château des rois de France et le village des peintres.' },
   { k: 'champagne', n: 'Champagne · Reims & Épernay', h: 10, km: 300, P: null, d: 'La cathédrale de Reims, une grande maison de champagne, un vigneron et l’avenue de Champagne.' },
   { k: 'mesure', n: 'Votre journée sur mesure', h: 0, km: 0, P: null, d: 'Châteaux de la Loire, Normandie, Mont-Saint-Michel, Chantilly ou votre propre itinéraire : la Maison vous adresse un devis.' }
