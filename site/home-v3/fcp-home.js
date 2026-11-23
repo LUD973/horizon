@@ -1161,17 +1161,37 @@ function acQuery(q) {
   local = local.slice(0, words.length ? 4 : 6);
   acItems = local; acSel = -1; acRender();
   if (nq.length < 3) return;
-  fetch(GEO + 'search?q=' + encodeURIComponent(q) + '&limit=6&autocomplete=1&lat=48.8566&lon=2.3522', { mode: 'cors' })
+  var places = [], addrs = [], done = 0;
+  function merge() {
+    if (seq !== acSeq || !acInput) return;
+    var seen = {}, out = [];
+    local.slice(0, 3).concat(places, addrs).forEach(function (it) { var k = norm(it.t); if (!seen[k]) { seen[k] = 1; out.push(it); } });
+    acItems = out.slice(0, 9); acSel = -1; acRender();
+  }
+  // Hotels, restaurants, venues, landmarks — OpenStreetMap (Photon), worldwide, biased to Paris
+  fetch('https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&limit=6&lang=fr&lat=48.8566&lon=2.3522', { mode: 'cors' })
     .then(function (r) { return r.json(); })
     .then(function (j) {
-      if (seq !== acSeq || !acInput) return;
-      var addr = (j.features || []).map(function (f) {
+      places = (j.features || []).filter(function (f) { var p = f.properties || {}; return p.name && p.osm_key !== 'highway' && p.osm_key !== 'place' && p.osm_key !== 'boundary'; }).slice(0, 4).map(function (f) {
         var p = f.properties || {};
-        var t = p.name || p.label, s = [p.postcode, p.city].filter(Boolean).join(' ');
-        if (p.type === 'municipality') s = p.context || s;
-        return { g: 'Adresses', t: t, s: s, v: p.label || t, ic: IC_PIN };
+        var street = [p.housenumber, p.street].filter(Boolean).join(' ');
+        var city = [p.postcode, p.city || p.town || p.village || p.county].filter(Boolean).join(' ');
+        var sub = [street, city, p.country && p.country !== 'France' ? p.country : ''].filter(Boolean).join(', ');
+        return { g: 'Hôtels et lieux', t: p.name, s: sub, v: p.name + (sub ? ' — ' + sub : ''), ic: IC_STAR };
       });
-      acItems = local.slice(0, 3).concat(addr); acSel = -1; acRender();
+      merge();
+    }).catch(function () {});
+  // Street addresses — Géoplateforme IGN (France)
+  fetch(GEO + 'search?q=' + encodeURIComponent(q) + '&limit=5&autocomplete=1&lat=48.8566&lon=2.3522', { mode: 'cors' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      addrs = (j.features || []).map(function (f) {
+        var p = f.properties || {};
+        var t = p.name || p.label, s2 = [p.postcode, p.city].filter(Boolean).join(' ');
+        if (p.type === 'municipality') s2 = p.context || s2;
+        return { g: 'Adresses', t: t, s: s2, v: p.label || t, ic: IC_PIN };
+      });
+      merge();
     }).catch(function () {});
 }
 function acPick(i) {
