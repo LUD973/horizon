@@ -57,7 +57,7 @@ class Component extends DCLogic {
     ];
     const go = (k) => () => this.setState({ tab: k, sheet: null });
     const chip = (on, dark) => on ? { bg: dark ? '#F6F1E7' : '#0B1F3A', fg: dark ? '#0B1F3A' : '#F6F1E7' } : { bg: 'transparent', fg: dark ? '#F6F1E7' : '#0B1F3A' };
-    const modeDefs = [{ k: 'transfer', label: 'Transfert' }, { k: 'dispo', label: 'Mise à disposition' }, { k: 'tour', label: 'City tour' }, { k: 'excursion', label: 'Excursion' }];
+    const modeDefs = [{ k: 'transfer', label: 'Transfert' }, { k: 'dispo', label: 'Mise à disposition' }, { k: 'tour', label: 'City tour' }, { k: 'excursion', label: 'Excursion' }].filter(m => FCP_API.modeAllowed(m.k));
     const bModes = modeDefs.map(m => ({ label: m.label, sel: S.bMode === m.k ? 'true' : 'false', ...chip(S.bMode === m.k, true), pick: () => this.setState({ bMode: m.k }) }));
     const bModesLight = modeDefs.map(m => ({ label: m.label, sel: S.bMode === m.k ? 'true' : 'false', ...chip(S.bMode === m.k, false), pick: () => this.setState({ bMode: m.k }) }));
     const ROUTE_DEF = [{ k: 'ville', l: 'Trajet en ville · A → B' }, { k: 'airport', l: 'Paris ↔ CDG · Orly · Le Bourget' }, { k: 'cdgorly', l: 'CDG ↔ Orly' }, { k: 'beauvais', l: 'Paris ↔ Beauvais' }, { k: 'disney', l: 'Paris ↔ Disneyland' }, { k: 'gare', l: 'Paris ↔ Gare' }, { k: 'other', l: 'Autre trajet' }];
@@ -278,7 +278,7 @@ class Component extends DCLogic {
       ageOpts: AGE_OPTS,
       kids: S.kids.map((a, i) => ({ title: 'Enfant ' + (i + 1), age: String(a), seat: seatFor(a), change: (e) => { const v = parseInt(e.target.value, 10); this.setState({ kids: this.state.kids.map((x, j) => j === i ? v : x) }); }, remove: () => { const n = this.state.kids.filter((x, j) => j !== i); this.setState({ kids: n, kidsOn: n.length > 0 }); } })),
       booked: S.bStep === 'done',
-      openBooking: () => this.setState({ sheet: 'booking', bStep: 'form', requested: false, bkErr: '', bkRef: null, routeManual: false, routeAuto: false }),
+      openBooking: () => { FCP_API.allowModes(null); this.setState({ sheet: 'booking', bStep: 'form', requested: false, bkErr: '', bkRef: null, routeManual: false, routeAuto: false }); },
       toRecap: () => this.setState({ bStep: 'recap' }),
       backToForm: () => this.setState({ bStep: 'form' }),
       confirmBooking: () => this.setState({ bStep: 'done', requested: false }),
@@ -432,7 +432,7 @@ class Component extends DCLogic {
     ];
     const go = (k) => () => this.setState({ tab: k, sheet: null });
     const chip = (on, dark) => on ? { bg: dark ? '#F6F1E7' : '#0B1F3A', fg: dark ? '#0B1F3A' : '#F6F1E7' } : { bg: 'transparent', fg: dark ? '#F6F1E7' : '#0B1F3A' };
-    const modeDefs = [{ k: 'transfer', label: 'Transfert' }, { k: 'dispo', label: 'Mise à disposition' }, { k: 'tour', label: 'City tour' }, { k: 'excursion', label: 'Excursion' }];
+    const modeDefs = [{ k: 'transfer', label: 'Transfert' }, { k: 'dispo', label: 'Mise à disposition' }, { k: 'tour', label: 'City tour' }, { k: 'excursion', label: 'Excursion' }].filter(m => FCP_API.modeAllowed(m.k));
     const bModes = modeDefs.map(m => ({ label: m.label, sel: S.bMode === m.k ? 'true' : 'false', ...chip(S.bMode === m.k, true), pick: () => this.setState({ bMode: m.k }) }));
     const bModesLight = modeDefs.map(m => ({ label: m.label, sel: S.bMode === m.k ? 'true' : 'false', ...chip(S.bMode === m.k, false), pick: () => this.setState({ bMode: m.k }) }));
     const ROUTE_DEF = [{ k: 'ville', l: 'Trajet en ville · A → B' }, { k: 'airport', l: 'Paris ↔ CDG · Orly · Le Bourget' }, { k: 'cdgorly', l: 'CDG ↔ Orly' }, { k: 'beauvais', l: 'Paris ↔ Beauvais' }, { k: 'disney', l: 'Paris ↔ Disneyland' }, { k: 'gare', l: 'Paris ↔ Gare' }, { k: 'other', l: 'Autre trajet' }];
@@ -653,7 +653,7 @@ class Component extends DCLogic {
       ageOpts: AGE_OPTS,
       kids: S.kids.map((a, i) => ({ title: 'Enfant ' + (i + 1), age: String(a), seat: seatFor(a), change: (e) => { const v = parseInt(e.target.value, 10); this.setState({ kids: this.state.kids.map((x, j) => j === i ? v : x) }); }, remove: () => { const n = this.state.kids.filter((x, j) => j !== i); this.setState({ kids: n, kidsOn: n.length > 0 }); } })),
       booked: S.bStep === 'done',
-      openBooking: () => this.setState({ sheet: 'booking', bStep: 'form', requested: false, bkErr: '', bkRef: null, routeManual: false, routeAuto: false }),
+      openBooking: () => { FCP_API.allowModes(null); this.setState({ sheet: 'booking', bStep: 'form', requested: false, bkErr: '', bkRef: null, routeManual: false, routeAuto: false }); },
       toRecap: () => this.setState({ bStep: 'recap' }),
       backToForm: () => this.setState({ bStep: 'form' }),
       confirmBooking: () => this.setState({ bStep: 'done', requested: false }),
@@ -1426,6 +1426,9 @@ API.offerLabel = function (S) {
   if (S.bMode === 'tour') { var t = tourOf(S); return t.n + ' · ' + t.h + ' h'; }
   var x = excOf(S); return x.n + ' · ' + x.h + ' h';
 };
+var MODES_OK = null;
+API.modeAllowed = function (k) { return !MODES_OK || MODES_OK.indexOf(k) > -1; };
+API.allowModes = function (list) { MODES_OK = list; };
 API.outsideParis = function () {
   var a = FCPV('origin') || FCPV('qfrom') || '', b = FCPV('destination') || '';
   var other = kindOf(a) ? b : kindOf(b) ? a : '';
@@ -1503,7 +1506,8 @@ function deepLink(inst) {
   if (ap) { if (q.dir === 'dep') { VALS.destination_ll = apll; VALS.origin_ll = all; } else { VALS.origin_ll = apll; VALS.destination_ll = all; } }
   if (q.date) VALS.date = q.date;
   if (q.flight) VALS.flight = q.flight;
-  var st = { sheet: 'booking', bStep: 'form', bMode: 'transfer', requested: false };
+  if (q.modes) MODES_OK = q.modes.split(',');
+  var st = { sheet: 'booking', bStep: 'form', bMode: q.mode || 'transfer', requested: false };
   if (q.route) { st.bRoute = q.route; st.routeManual = true; }
   if (q.tier) st.bTier = q.tier;
   if (q.greeter === '1') st.greeter = true;
@@ -1512,7 +1516,8 @@ function deepLink(inst) {
 }
 
 API.goBook = function (o) {
-  var p = ['route=' + (o.route || ''), 'tier=' + (o.tier || 'e'), 'dir=' + (o.dir || 'arr'), 'ap=' + (o.ap || '')];
+  var p = ['route=' + (o.route || ''), 'tier=' + (o.tier || 'e'), 'dir=' + (o.dir || 'arr'), 'ap=' + (o.ap || ''), 'modes=' + (o.modes || 'transfer,dispo')];
+  if (o.mode) p.push('mode=' + o.mode);
   ['addr', 'date', 'flight'].forEach(function (k) { if (FCPV(k)) p.push(k + '=' + encodeURIComponent(FCPV(k))); });
   if (VALS.addr_ll) p.push('ll=' + VALS.addr_ll.join(','));
   if (o.greeter) p.push('greeter=1');

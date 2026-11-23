@@ -600,6 +600,9 @@ API.offerLabel = function (S) {
   if (S.bMode === 'tour') { var t = tourOf(S); return t.n + ' · ' + t.h + ' h'; }
   var x = excOf(S); return x.n + ' · ' + x.h + ' h';
 };
+var MODES_OK = null;
+API.modeAllowed = function (k) { return !MODES_OK || MODES_OK.indexOf(k) > -1; };
+API.allowModes = function (list) { MODES_OK = list; };
 API.outsideParis = function () {
   var a = FCPV('origin') || FCPV('qfrom') || '', b = FCPV('destination') || '';
   var other = kindOf(a) ? b : kindOf(b) ? a : '';
@@ -677,7 +680,8 @@ function deepLink(inst) {
   if (ap) { if (q.dir === 'dep') { VALS.destination_ll = apll; VALS.origin_ll = all; } else { VALS.origin_ll = apll; VALS.destination_ll = all; } }
   if (q.date) VALS.date = q.date;
   if (q.flight) VALS.flight = q.flight;
-  var st = { sheet: 'booking', bStep: 'form', bMode: 'transfer', requested: false };
+  if (q.modes) MODES_OK = q.modes.split(',');
+  var st = { sheet: 'booking', bStep: 'form', bMode: q.mode || 'transfer', requested: false };
   if (q.route) { st.bRoute = q.route; st.routeManual = true; }
   if (q.tier) st.bTier = q.tier;
   if (q.greeter === '1') st.greeter = true;
@@ -686,7 +690,8 @@ function deepLink(inst) {
 }
 
 API.goBook = function (o) {
-  var p = ['route=' + (o.route || ''), 'tier=' + (o.tier || 'e'), 'dir=' + (o.dir || 'arr'), 'ap=' + (o.ap || '')];
+  var p = ['route=' + (o.route || ''), 'tier=' + (o.tier || 'e'), 'dir=' + (o.dir || 'arr'), 'ap=' + (o.ap || ''), 'modes=' + (o.modes || 'transfer,dispo')];
+  if (o.mode) p.push('mode=' + o.mode);
   ['addr', 'date', 'flight'].forEach(function (k) { if (FCPV(k)) p.push(k + '=' + encodeURIComponent(FCPV(k))); });
   if (VALS.addr_ll) p.push('ll=' + VALS.addr_ll.join(','));
   if (o.greeter) p.push('greeter=1');
