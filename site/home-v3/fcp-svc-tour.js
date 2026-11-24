@@ -112,8 +112,8 @@ function Instance(def, root) {
       return;
     }
     var t = ev.target.closest('[data-click]'); if (t && root.contains(t)) { if (t.tagName !== 'A' || t.getAttribute('href') === '#' || !t.getAttribute('href')) ev.preventDefault(); H[+t.dataset.click](ev); } };
-  this.onChange = function (ev) { var nm = ev.target.name; if (nm) VALS[nm] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; var t = ev.target.closest('[data-change]'); if (t) H[+t.dataset.change](ev); if (nm === 'origin' || nm === 'destination' || nm === 'qfrom') setTimeout(function () { API.detectRoute(comp); comp.setState({ addrT: Date.now() }); }, 0); if (nm === 'origin' || nm === 'destination' || nm === 'date' || nm === 'flight') API.scheduleFlightCheck(comp); };
-  this.onInput = function (ev) { if (ev.target.name) { VALS[ev.target.name] = ev.target.value; if (ev.isTrusted) VALS[ev.target.name + '_ll'] = null; } if (ev.target.name === 'flight' || ev.target.name === 'ret_flight') { comp.setState({ flT: Date.now() }); if (ev.target.name === 'flight') API.scheduleFlightCheck(comp); } };
+  this.onChange = function (ev) { var nm = ev.target.name; if (nm) VALS[nm] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; var t = ev.target.closest('[data-change]'); if (t) H[+t.dataset.change](ev); if (nm === 'origin' || nm === 'destination' || nm === 'qfrom') setTimeout(function () { API.ensureCoords(comp, nm); API.detectRoute(comp); comp.setState({ addrT: Date.now() }); }, 0); if (nm === 'origin' || nm === 'destination' || nm === 'date' || nm === 'flight') API.scheduleFlightCheck(comp); };
+  this.onInput = function (ev) { var ti = ev.target.closest && ev.target.closest('[data-input]'); if (ti && root.contains(ti)) H[+ti.dataset.input](ev); if (ev.target.name) { VALS[ev.target.name] = ev.target.value; if (ev.isTrusted) { VALS[ev.target.name + '_ll'] = null; VALS[ev.target.name + '_pc'] = null; } } if (ev.target.name === 'flight' || ev.target.name === 'ret_flight') { comp.setState({ flT: Date.now() }); if (ev.target.name === 'flight') API.scheduleFlightCheck(comp); } };
   this.onScroll = function (ev) { var t = ev.target; if (t && t.dataset && t.dataset.scroll) H[+t.dataset.scroll]({ currentTarget: t, target: t }); };
   root.addEventListener('click', this.onClick);
   root.addEventListener('change', this.onChange);
@@ -351,7 +351,7 @@ function acQuery(q) {
         var street = [p.housenumber, p.street].filter(Boolean).join(' ');
         var city = [p.postcode, p.city || p.town || p.village || p.county].filter(Boolean).join(' ');
         var sub = [street, city, p.country && p.country !== 'France' ? p.country : ''].filter(Boolean).join(', ');
-        var gc = (f.geometry || {}).coordinates; return { g: 'Hôtels et lieux', t: p.name, s: sub, v: p.name + (sub ? ' — ' + sub : ''), ic: IC_STAR, ll: gc ? [gc[1], gc[0]] : null };
+        var gc = (f.geometry || {}).coordinates; return { g: 'Hôtels et lieux', t: p.name, s: sub, v: p.name + (sub ? ' — ' + sub : ''), ic: IC_STAR, ll: gc ? [gc[1], gc[0]] : null, pc: p.postcode || null };
       });
       merge();
     }).catch(function () {});
@@ -363,7 +363,7 @@ function acQuery(q) {
         var p = f.properties || {};
         var t = p.name || p.label, s2 = [p.postcode, p.city].filter(Boolean).join(' ');
         if (p.type === 'municipality') s2 = p.context || s2;
-        var gc = (f.geometry || {}).coordinates; return { g: 'Adresses', t: t, s: s2, v: p.label || t, ic: IC_PIN, ll: gc ? [gc[1], gc[0]] : null };
+        var gc = (f.geometry || {}).coordinates; return { g: 'Adresses', t: t, s: s2, v: p.label || t, ic: IC_PIN, ll: gc ? [gc[1], gc[0]] : null, pc: p.postcode || (p.citycode ? null : null) };
       });
       merge();
     }).catch(function () {});
@@ -373,6 +373,7 @@ function acPick(i) {
   acInput.value = it.v;
   VALS[acInput.name] = it.v;
   VALS[acInput.name + '_ll'] = it.ll || null;
+  VALS[acInput.name + '_pc'] = it.pc || null;
   acInput.dispatchEvent(new Event('input', { bubbles: true }));
   acInput.dispatchEvent(new Event('change', { bubbles: true }));
   acHide();
@@ -503,6 +504,31 @@ function zoneOf(t) {
   if (/versailles/.test(n)) return 'grande';
   return null;
 }
+var AP_LL = { cdg: [49.0097, 2.5479], orly: [48.7262, 2.3652], lbg: [48.9694, 2.4414], bva: [49.4544, 2.1128], disney: [48.8722, 2.7758] };
+function zoneOfLL(ll) {
+  if (!ll) return null;
+  if (ll[0] > 48.8156 && ll[0] < 48.9022 && ll[1] > 2.2241 && ll[1] < 2.4699) return 'paris';
+  var d = hav([48.8566, 2.3522], ll);
+  return d <= 15 ? 'petite' : d <= 45 ? 'grande' : 'hors';
+}
+function llOf(n) { var v = VALS[n + '_ll']; if (v) return v; var k = kindOf(FCPV(n) || ''); return k && AP_LL[k] ? AP_LL[k] : null; }
+function zoneField(n) { var t = FCPV(n) || ''; return zoneOf(t) || zoneOf(VALS[n + '_pc'] || '') || zoneOfLL(VALS[n + '_ll']); }
+/* Adresse saisie sans choisir dans la liste : on la géolocalise pour calculer le bon prix */
+var GC_DONE = {};
+API.ensureCoords = function (comp, n) {
+  var t = FCPV(n) || '';
+  if (!t || t.length < 3 || VALS[n + '_ll'] || kindOf(t) || GC_DONE[n + '|' + t]) return;
+  GC_DONE[n + '|' + t] = 1;
+  fetch(GEO + 'search?q=' + encodeURIComponent(t) + '&limit=1', { mode: 'cors' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      var f = (j.features || [])[0]; if (!f || FCPV(n) !== t) return;
+      var gc = (f.geometry || {}).coordinates, p = f.properties || {};
+      if (gc) VALS[n + '_ll'] = [gc[1], gc[0]];
+      VALS[n + '_pc'] = p.postcode || null;
+      API.detectRoute(comp); comp.setState({ addrT: Date.now() });
+    }).catch(function () {});
+};
 function kindOf(t) {
   var n = norm(t);
   if (!n) return null;
@@ -518,7 +544,7 @@ var RATES = { c: 2.50, e: 3.13, s: 5.63, v: 3.50 }, DIST = {}, KM = { km: 0 };
 function hav(a, b) { var R = 6371, r = Math.PI / 180, dl = (b[0] - a[0]) * r, dn = (b[1] - a[1]) * r; var x = Math.sin(dl / 2) * Math.sin(dl / 2) + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dn / 2) * Math.sin(dn / 2); return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x)); }
 var kmComp = null;
 API.kmGrid = function (base) {
-  var a = VALS.origin_ll, b = VALS.destination_ll;
+  var a = llOf('origin') || llOf('qfrom'), b = llOf('destination');
   KM.km = 0;
   if (!a || !b || !base) return null;
   var key = a.join(',') + ';' + b.join(',');
@@ -592,14 +618,15 @@ API.modeAllowed = function (k) { return !MODES_OK || MODES_OK.indexOf(k) > -1; }
 API.allowModes = function (list) { MODES_OK = list; };
 API.outsideParis = function () {
   var a = FCPV('origin') || FCPV('qfrom') || '', b = FCPV('destination') || '';
-  var other = kindOf(a) ? b : kindOf(b) ? a : '';
+  var on = kindOf(a) ? 'destination' : kindOf(b) ? (FCPV('origin') ? 'origin' : 'qfrom') : '';
+  if (!on) return false;
+  var other = FCPV(on) || '';
   if (!other || kindOf(other)) return false;
-  var z = zoneOf(other);
-  return !!z && z !== 'paris';
+  return zoneField(on) !== 'paris';
 };
 API.detectRoute = function (comp) {
   var S = comp.state;
-  if (S.bMode !== 'transfer' || S.routeManual) return;
+  if (S.bMode !== 'transfer') return;
   var a = FCPV('origin') || FCPV('qfrom') || '', b = FCPV('destination') || '';
   if (!a || !b) return;
   var ka = kindOf(a), kb = kindOf(b), AP = { cdg: 1, orly: 1, lbg: 1 }, route = null, zone = null;
@@ -607,9 +634,9 @@ API.detectRoute = function (comp) {
   else if (AP[ka] || AP[kb]) route = 'airport';
   else if (ka === 'bva' || kb === 'bva') route = 'beauvais';
   else if (ka === 'disney' || kb === 'disney') route = 'disney';
-  else if ((ka === 'gare' || kb === 'gare') && (zoneOf(ka === 'gare' ? b : a) || 'paris') === 'paris') route = 'gare';
+  else if ((ka === 'gare' || kb === 'gare') && (zoneField(ka === 'gare' ? 'destination' : (FCPV('origin') ? 'origin' : 'qfrom')) || 'paris') === 'paris') route = 'gare';
   else {
-    var za = zoneOf(a) || (ka === 'gare' ? 'paris' : null), zb = zoneOf(b) || (kb === 'gare' ? 'paris' : null);
+    var za = zoneField(FCPV('origin') ? 'origin' : 'qfrom') || (ka === 'gare' ? 'paris' : null), zb = zoneField('destination') || (kb === 'gare' ? 'paris' : null);
     if (!za || !zb) return;
     var R = { paris: 0, petite: 1, grande: 2, hors: 3 }, K = ['paris', 'petite', 'grande', 'hors'];
     route = 'ville'; zone = K[Math.max(R[za], R[zb])];
